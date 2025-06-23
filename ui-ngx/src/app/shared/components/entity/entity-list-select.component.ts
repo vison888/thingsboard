@@ -14,13 +14,16 @@
 /// limitations under the License.
 ///
 
-import { booleanAttribute, Component, DestroyRef, forwardRef, Input, OnInit } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR, UntypedFormBuilder, UntypedFormGroup } from '@angular/forms';
+import { AfterViewInit, Component, DestroyRef, forwardRef, Input, OnInit } from '@angular/core';
+import { ControlValueAccessor, UntypedFormBuilder, UntypedFormGroup, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { Store } from '@ngrx/store';
+import { AppState } from '@core/core.state';
+import { TranslateService } from '@ngx-translate/core';
 import { AliasEntityType, EntityType } from '@shared/models/entity-type.models';
 import { EntityService } from '@core/http/entity.service';
 import { EntityId } from '@shared/models/id/entity-id';
+import { coerceBooleanProperty } from '@angular/cdk/coercion';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { isDefinedAndNotNull } from '@core/utils';
 
 interface EntityListSelectModel {
   entityType: EntityType | AliasEntityType;
@@ -38,7 +41,7 @@ interface EntityListSelectModel {
   }]
 })
 
-export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
+export class EntityListSelectComponent implements ControlValueAccessor, OnInit, AfterViewInit {
 
   entityListSelectFormGroup: UntypedFormGroup;
 
@@ -50,31 +53,27 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
   @Input()
   useAliasEntityTypes: boolean;
 
-  @Input({transform: booleanAttribute})
-  required: boolean;
+  private requiredValue: boolean;
+  get required(): boolean {
+    return this.requiredValue;
+  }
+  @Input()
+  set required(value: boolean) {
+    this.requiredValue = coerceBooleanProperty(value);
+  }
 
   @Input()
   disabled: boolean;
 
-  @Input({transform: booleanAttribute})
-  inlineField: boolean;
-
-  @Input({transform: booleanAttribute})
-  filterAllowedEntityTypes = true;
-
-  @Input()
-  predefinedEntityType: EntityType | AliasEntityType;
-
-  @Input()
-  additionEntityTypes: {[key in string]: string} = {};
-
   displayEntityTypeSelect: boolean;
 
-  private defaultEntityType: EntityType | AliasEntityType = null;
+  private readonly defaultEntityType: EntityType | AliasEntityType = null;
 
-  private propagateChange = (_v: any) => { };
+  private propagateChange = (v: any) => { };
 
-  constructor(private entityService: EntityService,
+  constructor(private store: Store<AppState>,
+              private entityService: EntityService,
+              public translate: TranslateService,
               private fb: UntypedFormBuilder,
               private destroyRef: DestroyRef) {
 
@@ -97,7 +96,7 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
     this.propagateChange = fn;
   }
 
-  registerOnTouched(_fn: any): void {
+  registerOnTouched(fn: any): void {
   }
 
   ngOnInit() {
@@ -115,9 +114,9 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
         this.updateView(this.modelValue.entityType, values);
       }
     );
-    if (isDefinedAndNotNull(this.predefinedEntityType)) {
-      this.defaultEntityType = this.predefinedEntityType;
-    }
+  }
+
+  ngAfterViewInit(): void {
   }
 
   setDisabledState(isDisabled: boolean): void {
@@ -146,7 +145,7 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
     this.entityListSelectFormGroup.get('entityIds').patchValue([...this.modelValue.ids], {emitEvent: true});
   }
 
-  private updateView(entityType: EntityType | AliasEntityType | null, entityIds: Array<string> | null) {
+  updateView(entityType: EntityType | AliasEntityType | null, entityIds: Array<string> | null) {
     if (this.modelValue.entityType !== entityType ||
       !this.compareIds(this.modelValue.ids, entityIds)) {
       this.modelValue = {
@@ -157,7 +156,7 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
     }
   }
 
-  private compareIds(ids1: Array<string> | null, ids2: Array<string> | null): boolean {
+  compareIds(ids1: Array<string> | null, ids2: Array<string> | null): boolean {
     if (ids1 !== null && ids2 !== null) {
       return JSON.stringify(ids1) === JSON.stringify(ids2);
     } else {
@@ -165,7 +164,7 @@ export class EntityListSelectComponent implements ControlValueAccessor, OnInit {
     }
   }
 
-  private toEntityIds(modelValue: EntityListSelectModel): Array<EntityId> {
+  toEntityIds(modelValue: EntityListSelectModel): Array<EntityId> {
     if (modelValue !== null && modelValue.entityType && modelValue.ids && modelValue.ids.length > 0) {
       const entityType = modelValue.entityType;
       return modelValue.ids.map(id => ({entityType, id}));

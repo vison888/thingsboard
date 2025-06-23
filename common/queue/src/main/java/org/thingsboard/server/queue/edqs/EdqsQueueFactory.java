@@ -19,9 +19,8 @@ import org.thingsboard.server.gen.transport.TransportProtos.FromEdqsMsg;
 import org.thingsboard.server.gen.transport.TransportProtos.ToEdqsMsg;
 import org.thingsboard.server.queue.TbQueueAdmin;
 import org.thingsboard.server.queue.TbQueueConsumer;
-import org.thingsboard.server.queue.TbQueueHandler;
 import org.thingsboard.server.queue.TbQueueProducer;
-import org.thingsboard.server.queue.common.PartitionedQueueResponseTemplate;
+import org.thingsboard.server.queue.TbQueueResponseTemplate;
 import org.thingsboard.server.queue.common.TbProtoQueueMsg;
 
 public interface EdqsQueueFactory {
@@ -34,7 +33,7 @@ public interface EdqsQueueFactory {
 
     TbQueueProducer<TbProtoQueueMsg<ToEdqsMsg>> createEdqsStateProducer();
 
-    PartitionedQueueResponseTemplate<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> createEdqsResponseTemplate(TbQueueHandler<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> handler);
+    TbQueueResponseTemplate<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> createEdqsResponseTemplate();
 
     TbQueueAdmin getEdqsQueueAdmin();
 

@@ -16,6 +16,7 @@
 package org.thingsboard.monitoring.service;
 
 import com.google.common.collect.Sets;
+import jakarta.annotation.PostConstruct;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -30,6 +31,7 @@ import org.thingsboard.monitoring.config.MonitoringTarget;
 import org.thingsboard.monitoring.data.Latencies;
 import org.thingsboard.monitoring.data.MonitoredServiceKey;
 import org.thingsboard.monitoring.data.ServiceFailureException;
+import org.thingsboard.monitoring.service.transport.TransportHealthChecker;
 import org.thingsboard.monitoring.util.TbStopWatch;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.page.PageData;
@@ -57,9 +59,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.thingsboard.monitoring.service.BaseHealthChecker.TEST_CF_TELEMETRY_KEY;
-import static org.thingsboard.monitoring.service.BaseHealthChecker.TEST_TELEMETRY_KEY;
-
 @Slf4j
 public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T extends MonitoringTarget> {
 
@@ -80,15 +79,14 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
     protected ApplicationContext applicationContext;
 
     @Value("${monitoring.edqs.enabled:false}")
-    private boolean checkEdqs;
-    @Value("${monitoring.calculated_fields.enabled:true}")
-    protected boolean checkCalculatedFields;
+    private boolean edqsMonitoringEnabled;
 
-    public void init() {
+    @PostConstruct
+    private void init() {
         if (configs == null || configs.isEmpty()) {
             return;
         }
-
+        tbClient.logIn();
         configs.forEach(config -> {
             config.getTargets().forEach(target -> {
                 BaseHealthChecker<C, T> healthChecker = initHealthChecker(target, config);
@@ -106,7 +104,7 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
     private BaseHealthChecker<C, T> initHealthChecker(T target, C config) {
         BaseHealthChecker<C, T> healthChecker = (BaseHealthChecker<C, T>) createHealthChecker(config, target);
         log.info("Initializing {} for {}", healthChecker.getClass().getSimpleName(), target.getBaseUrl());
-        healthChecker.initialize();
+        healthChecker.initialize(tbClient);
         devices.add(target.getDeviceId());
         return healthChecker;
     }
@@ -123,7 +121,7 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
 
             try (WsClient wsClient = wsClientFactory.createClient(accessToken)) {
                 stopWatch.start();
-                wsClient.subscribeForTelemetry(devices, getTestTelemetryKeys()).waitForReply();
+                wsClient.subscribeForTelemetry(devices, TransportHealthChecker.TEST_TELEMETRY_KEY).waitForReply();
                 reporter.reportLatency(Latencies.WS_SUBSCRIBE, stopWatch.getTime());
 
                 for (BaseHealthChecker<C, T> healthChecker : healthCheckers) {
@@ -131,17 +129,22 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
                 }
             }
 
-            if (checkEdqs) {
-                stopWatch.start();
-                checkEdqs();
-                reporter.reportLatency(Latencies.EDQS_QUERY, stopWatch.getTime());
-                reporter.serviceIsOk(MonitoredServiceKey.EDQS);
+            if (edqsMonitoringEnabled) {
+                try {
+                    stopWatch.start();
+                    checkEdqs();
+                    reporter.reportLatency(Latencies.EDQS_QUERY, stopWatch.getTime());
+
+                    reporter.serviceIsOk(MonitoredServiceKey.EDQS);
+                } catch (ServiceFailureException e) {
+                    reporter.serviceFailure(MonitoredServiceKey.EDQS, e);
+                } catch (Exception e) {
+                    reporter.serviceFailure(MonitoredServiceKey.GENERAL, e);
+                }
             }
 
-            reporter.reportLatencies();
+            reporter.reportLatencies(tbClient);
             log.debug("Finished {}", getName());
-        } catch (ServiceFailureException e) {
-            reporter.serviceFailure(e.getServiceKey(), e);
         } catch (Throwable error) {
             try {
                 reporter.serviceFailure(MonitoredServiceKey.GENERAL, error);
@@ -196,7 +199,7 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
                 .collect(Collectors.toSet());
         Set<UUID> missing = Sets.difference(new HashSet<>(this.devices), devices);
         if (!missing.isEmpty()) {
-            throw new ServiceFailureException(MonitoredServiceKey.EDQS, "Missing devices in the response: " + missing);
+            throw new ServiceFailureException("Missing devices in the response: " + missing);
         }
 
         result.getData().stream()
@@ -208,7 +211,7 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
                     Stream.of("name", "type", "testData").forEach(key -> {
                         TsValue value = values.get(key);
                         if (value == null || StringUtils.isBlank(value.getValue())) {
-                            throw new ServiceFailureException(MonitoredServiceKey.EDQS, "Missing " + key + " for device " + entityData.getEntityId());
+                            throw new ServiceFailureException("Missing " + key + " for device " + entityData.getEntityId());
                         }
                     });
                 });
@@ -227,10 +230,6 @@ public abstract class BaseMonitoringService<C extends MonitoringConfig<T>, T ext
                     }
                 })
                 .collect(Collectors.toSet());
-    }
-
-    private List<String> getTestTelemetryKeys() {
-        return checkCalculatedFields ? List.of(TEST_TELEMETRY_KEY, TEST_CF_TELEMETRY_KEY) : List.of(TEST_TELEMETRY_KEY);
     }
 
     private void stopHealthChecker(BaseHealthChecker<C, T> healthChecker) throws Exception {

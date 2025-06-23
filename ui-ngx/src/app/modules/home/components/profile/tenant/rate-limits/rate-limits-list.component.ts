@@ -14,23 +14,22 @@
 /// limitations under the License.
 ///
 
-import { Component, DestroyRef, forwardRef, Input, OnInit } from '@angular/core';
+import { Component, forwardRef, Input, OnDestroy, OnInit } from '@angular/core';
 import {
   ControlValueAccessor,
-  FormArray,
-  FormBuilder,
-  FormControl,
-  FormGroup,
+  UntypedFormArray,
+  UntypedFormBuilder,
+  UntypedFormGroup,
   NG_VALIDATORS,
   NG_VALUE_ACCESSOR,
   ValidationErrors,
   Validator,
-  ValidatorFn,
   Validators
 } from '@angular/forms';
+import { Subject, Subscription } from 'rxjs';
 import { RateLimits, rateLimitsArrayToString, stringToRateLimitsArray } from './rate-limits.models';
 import { isDefinedAndNotNull } from '@core/utils';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'tb-rate-limits-list',
@@ -49,51 +48,51 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
     }
   ]
 })
-export class RateLimitsListComponent implements ControlValueAccessor, Validator, OnInit {
+export class RateLimitsListComponent implements ControlValueAccessor, Validator, OnInit, OnDestroy {
 
   @Input() disabled: boolean;
 
-  rateLimitsListFormGroup: FormGroup;
+  rateLimitsListFormGroup: UntypedFormGroup;
 
   rateLimitsArray: Array<RateLimits>;
 
-  private propagateChange = (_v: any) => { };
+  private destroy$ = new Subject<void>();
+  private propagateChange = (v: any) => { };
 
-  constructor(private fb: FormBuilder,
-              private destroyRef: DestroyRef) {}
+  constructor(private fb: UntypedFormBuilder) {}
 
   ngOnInit(): void {
     this.rateLimitsListFormGroup = this.fb.group({
       rateLimits: this.fb.array([])
     });
     this.rateLimitsListFormGroup.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
+      .pipe(takeUntil(this.destroy$))
       .subscribe((value) => {
-        this.updateView(value?.rateLimits ?? []);
+        this.updateView(value?.rateLimits);
       }
     );
   }
 
   public removeRateLimits(index: number) {
-    this.rateLimitsFormArray.removeAt(index);
+    (this.rateLimitsListFormGroup.get('rateLimits') as UntypedFormArray).removeAt(index);
   }
 
   public addRateLimits() {
     this.rateLimitsFormArray.push(this.fb.group({
       value: [null, [Validators.required]],
-      time: [null, [Validators.required, this.uniqTimeRequired()]]
+      time: [null, [Validators.required]]
     }));
   }
 
-  get rateLimitsFormArray(): FormArray<FormGroup> {
-    return this.rateLimitsListFormGroup.get('rateLimits') as FormArray<FormGroup>;
+  get rateLimitsFormArray(): UntypedFormArray {
+    return this.rateLimitsListFormGroup.get('rateLimits') as UntypedFormArray;
   }
 
   registerOnChange(fn: any): void {
     this.propagateChange = fn;
   }
 
-  registerOnTouched(_fn: any): void {
+  registerOnTouched(fn: any): void {
   }
 
   setDisabledState?(isDisabled: boolean): void {
@@ -112,26 +111,26 @@ export class RateLimitsListComponent implements ControlValueAccessor, Validator,
   }
 
   writeValue(rateLimits: string) {
-    const rateLimitsControls: Array<FormGroup> = [];
+    const rateLimitsControls: Array<UntypedFormGroup> = [];
     if (rateLimits) {
-      this.rateLimitsArray = stringToRateLimitsArray(rateLimits);
-      this.rateLimitsArray.forEach((rateLimit) => {
+      const rateLimitsArray = rateLimits.split(',');
+      for (let i = 0; i < rateLimitsArray.length; i++) {
+        const [value, time] = rateLimitsArray[i].split(':');
         const rateLimitsControl = this.fb.group({
-          value: [rateLimit.value, [Validators.required]],
-          time: [rateLimit.time, [Validators.required, this.uniqTimeRequired()]]
+          value: [value, [Validators.required]],
+          time: [time, [Validators.required]]
         });
         if (this.disabled) {
           rateLimitsControl.disable();
         }
         rateLimitsControls.push(rateLimitsControl);
-      })
-    } else {
-      this.rateLimitsArray = null;
+      }
     }
     this.rateLimitsListFormGroup.setControl('rateLimits', this.fb.array(rateLimitsControls), {emitEvent: false});
+    this.rateLimitsArray = stringToRateLimitsArray(rateLimits);
   }
 
-  private updateView(rateLimitsArray: Array<RateLimits>) {
+  updateView(rateLimitsArray: Array<RateLimits>) {
     if (rateLimitsArray.length > 0) {
       const notNullRateLimits = rateLimitsArray.filter(rateLimits =>
         isDefinedAndNotNull(rateLimits.value) && isDefinedAndNotNull(rateLimits.time)
@@ -145,22 +144,8 @@ export class RateLimitsListComponent implements ControlValueAccessor, Validator,
     }
   }
 
-  private uniqTimeRequired(): ValidatorFn {
-    return (control: FormControl) => {
-      const formGroup = control.parent as FormGroup;
-      if (!formGroup) return null;
-
-      const formArray = formGroup.parent as FormArray;
-      if (!formArray) return null;
-
-      const newTime = control.value;
-      const index = formArray.controls.indexOf(formGroup);
-
-      const isDuplicate = formArray.controls
-        .filter((_, i) => i !== index)
-        .some(group => group.get('time')?.value === newTime && newTime !== '');
-
-      return isDuplicate ? { duplicateTime: true } : null;
-    };
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

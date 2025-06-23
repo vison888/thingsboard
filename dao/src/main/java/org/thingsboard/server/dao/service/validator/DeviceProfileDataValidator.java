@@ -43,7 +43,6 @@ import org.thingsboard.server.common.data.device.profile.lwm2m.bootstrap.Abstrac
 import org.thingsboard.server.common.data.device.profile.lwm2m.bootstrap.LwM2MBootstrapServerCredential;
 import org.thingsboard.server.common.data.device.profile.lwm2m.bootstrap.RPKLwM2MBootstrapServerCredential;
 import org.thingsboard.server.common.data.device.profile.lwm2m.bootstrap.X509LwM2MBootstrapServerCredential;
-import org.thingsboard.server.common.data.id.RuleChainId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.queue.Queue;
 import org.thingsboard.server.common.data.rule.RuleChain;
@@ -189,11 +188,13 @@ public class DeviceProfileDataValidator extends AbstractHasOtaPackageValidator<D
         }
 
         if (deviceProfile.getDefaultRuleChainId() != null) {
-            validateRuleChain(tenantId, deviceProfile.getTenantId(), deviceProfile.getDefaultRuleChainId());
-        }
-
-        if (deviceProfile.getDefaultEdgeRuleChainId() != null) {
-            validateRuleChain(tenantId, deviceProfile.getTenantId(), deviceProfile.getDefaultEdgeRuleChainId());
+            RuleChain ruleChain = ruleChainService.findRuleChainById(tenantId, deviceProfile.getDefaultRuleChainId());
+            if (ruleChain == null) {
+                throw new DataValidationException("Can't assign non-existent rule chain!");
+            }
+            if (!ruleChain.getTenantId().equals(deviceProfile.getTenantId())) {
+                throw new DataValidationException("Can't assign rule chain from different tenant!");
+            }
         }
 
         if (deviceProfile.getDefaultDashboardId() != null) {
@@ -207,16 +208,6 @@ public class DeviceProfileDataValidator extends AbstractHasOtaPackageValidator<D
         }
 
         validateOtaPackage(tenantId, deviceProfile, deviceProfile.getId());
-    }
-
-    private void validateRuleChain(TenantId tenantId, TenantId deviceProfileTenantId, RuleChainId ruleChainId) {
-        RuleChain ruleChain = ruleChainService.findRuleChainById(tenantId, ruleChainId);
-        if (ruleChain == null) {
-            throw new DataValidationException("Can't assign non-existent rule chain!");
-        }
-        if (!ruleChain.getTenantId().equals(deviceProfileTenantId)) {
-            throw new DataValidationException("Can't assign rule chain from different tenant!");
-        }
     }
 
     @Override
@@ -338,8 +329,8 @@ public class DeviceProfileDataValidator extends AbstractHasOtaPackageValidator<D
             }
 
             if (serverConfig.getShortServerId() != null) {
-                if (serverConfig.isBootstrapServerIs()) {
-                    if (serverConfig.getShortServerId() < 0 || serverConfig.getShortServerId() > 65535) {
+                if (serverConfig.isBootstrapServerIs()){
+                    if(serverConfig.getShortServerId() < 0 || serverConfig.getShortServerId() > 65535){
                         throw new DeviceCredentialsValidationException("Bootstrap Server ShortServerId must be in range [0 - 65535]!");
                     }
                 } else {
@@ -432,5 +423,4 @@ public class DeviceProfileDataValidator extends AbstractHasOtaPackageValidator<D
     private String getCertificateString(X509Certificate cert) throws CertificateEncodingException {
         return EncryptionUtil.certTrimNewLines(Base64.getEncoder().encodeToString(cert.getEncoded()));
     }
-
 }

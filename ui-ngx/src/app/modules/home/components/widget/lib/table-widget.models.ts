@@ -16,7 +16,7 @@
 
 import { EntityId } from '@shared/models/id/entity-id';
 import { DataKey, FormattedData, WidgetActionDescriptor, WidgetConfig } from '@shared/models/widget.models';
-import { getDescendantProp, isDefined, isNotEmptyStr } from '@core/utils';
+import { getDescendantProp, isDefined, isDefinedAndNotNull, isNotEmptyStr } from '@core/utils';
 import { AlarmDataInfo, alarmFields } from '@shared/models/alarm.models';
 import tinycolor from 'tinycolor2';
 import { Direction } from '@shared/models/page/sort-order';
@@ -34,7 +34,6 @@ import {
 } from '@shared/models/js-function.models';
 import { forkJoin, Observable, of, ReplaySubject } from 'rxjs';
 import { catchError, map, share } from 'rxjs/operators';
-import type { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 type ColumnVisibilityOptions = 'visible' | 'hidden' | 'hidden-mobile';
 
@@ -107,7 +106,8 @@ export interface CellContentFunctionInfo {
 
 export interface CellContentInfo {
   contentFunction: Observable<CellContentFunctionInfo>;
-  valueFormat: ValueFormatProcessor
+  units?: string;
+  decimals?: number;
 }
 
 export type CellStyleFunction = (...args: any[]) => any;
@@ -564,18 +564,11 @@ export function getHeaderTitle(dataKey: DataKey, keySettings: TableWidgetDataKey
 
 export function buildPageStepSizeValues(pageStepCount: number, pageStepIncrement: number): Array<number> {
   const pageSteps: Array<number> = [];
-  if (isValidPageStepCount(pageStepCount) && isValidPageStepIncrement(pageStepIncrement)) {
+  if (isDefinedAndNotNull(pageStepCount) && pageStepCount > 0 && pageStepCount <= 100 &&
+    isDefinedAndNotNull(pageStepIncrement) && pageStepIncrement > 0) {
     for (let i = 1; i <= pageStepCount; i++) {
       pageSteps.push(pageStepIncrement * i);
     }
   }
   return pageSteps;
-}
-
-export function isValidPageStepIncrement(value: number): boolean {
-  return Number.isInteger(value) && value > 0;
-}
-
-export function isValidPageStepCount(value: number): boolean {
-  return Number.isInteger(value) && value > 0 && value <= 100;
 }

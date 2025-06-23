@@ -23,15 +23,13 @@ import { TranslateService } from '@ngx-translate/core';
 import {
   ChartFillType,
   createChartTextStyle,
-  createRadialOpacityGradient,
-  toAnimationOption
+  createLinearOpacityGradient, createRadialOpacityGradient, toAnimationOption
 } from '@home/components/widget/lib/chart/chart.models';
-import { isDefinedAndNotNull } from '@core/utils';
+import { formatValue, isDefinedAndNotNull, isEqual } from '@core/utils';
 import { ComponentStyle } from '@shared/models/widget-settings.models';
 import { AreaStyleOption, SeriesLabelOption } from 'echarts/types/src/util/types';
 import { RadarIndicatorOption } from 'echarts/types/src/coord/radar/RadarModel';
 import { DataKey } from '@shared/models/widget.models';
-import { LatestChartDataItem } from '@home/components/widget/lib/chart/latest-chart.models';
 
 export class TbRadarChart extends TbLatestChart<RadarChartSettings> {
 
@@ -74,7 +72,7 @@ export class TbRadarChart extends TbLatestChart<RadarChartSettings> {
         fontWeight: axisTickLabelStyle.fontWeight,
         fontFamily: axisTickLabelStyle.fontFamily,
         fontSize: axisTickLabelStyle.fontSize,
-        formatter: (value: any) => this.valueFormatter.format(value)
+        formatter: (value: any) => formatValue(value, this.decimals, this.units, false)
       }
     }];
 
@@ -89,7 +87,7 @@ export class TbRadarChart extends TbLatestChart<RadarChartSettings> {
       formatter: (params) => {
         let result = '';
         if (isDefinedAndNotNull(params.value)) {
-          result = this.valueFormatter.format(params.value);
+          result = formatValue(params.value, this.decimals, this.units, false);
         }
         return `{value|${result}}`;
       },
@@ -142,7 +140,7 @@ export class TbRadarChart extends TbLatestChart<RadarChartSettings> {
       if (dataItem.enabled && dataItem.hasValue) {
         indicator.push({
           name: dataItem.dataKey.label,
-          color: dataItem.dataKey.color,
+          color: dataItem.dataKey.color
         });
         value.push(dataItem.value);
       }
@@ -150,19 +148,8 @@ export class TbRadarChart extends TbLatestChart<RadarChartSettings> {
     if (!indicator.length) {
       indicator.push({});
     }
-    if (this.settings.normalizeAxes && indicator.length > 1) {
-      const maxDataItem = this.findMaxDataItem(this.dataItems);
-      indicator.map(value => value.max = maxDataItem.value);
-    }
     this.latestChartOption.radar[0].indicator = indicator;
     this.latestChartOption.series[0].data[0].value = value;
-  }
-
-  private findMaxDataItem(array: LatestChartDataItem[]): LatestChartDataItem {
-    if (!array || array.length === 0) return null;
-    return array.reduce((maxObj, currentObj) => {
-      return currentObj.value > maxObj.value ? currentObj : maxObj;
-    }, array[0]);
   }
 
   protected forceRedrawOnResize(): boolean {

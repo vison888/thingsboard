@@ -88,7 +88,7 @@ public class LwM2mCredentialsSecurityInfoValidator {
         }
 
         TbLwM2MSecurityInfo securityInfo = resultSecurityStore[0];
-        if (securityInfo != null && securityInfo.getSecurityMode() == null) {
+        if (securityInfo.getSecurityMode() == null) {
             throw new LwM2MAuthException();
         }
         return securityInfo;

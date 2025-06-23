@@ -15,21 +15,14 @@
  */
 package org.thingsboard.monitoring.data;
 
-import lombok.Getter;
-
-@Getter
 public class ServiceFailureException extends RuntimeException {
 
-    private final Object serviceKey;
-
-    public ServiceFailureException(Object serviceKey, Throwable cause) {
+    public ServiceFailureException(Throwable cause) {
         super(cause.getMessage(), cause);
-        this.serviceKey = serviceKey;
     }
 
-    public ServiceFailureException(Object serviceKey, String message) {
+    public ServiceFailureException(String message) {
         super(message);
-        this.serviceKey = serviceKey;
     }
 
 }

@@ -57,7 +57,7 @@ export class DataLayerPatternProcessor {
 
   public setup(): Observable<void> {
     if (this.settings.type === DataLayerPatternType.function) {
-      return parseTbFunction<MapStringFunction>(this.dataLayer.getCtx().http, this.settings.patternFunction, ['data', 'dsData', 'ctx']).pipe(
+      return parseTbFunction<MapStringFunction>(this.dataLayer.getCtx().http, this.settings.patternFunction, ['data', 'dsData']).pipe(
         map((parsed) => {
           this.patternFunction = parsed;
           return null;
@@ -72,7 +72,7 @@ export class DataLayerPatternProcessor {
   public processPattern(data: FormattedData<TbMapDatasource>, dsData: FormattedData<TbMapDatasource>[]): string {
     let pattern: string;
     if (this.settings.type === DataLayerPatternType.function) {
-      pattern = safeExecuteTbFunction(this.patternFunction, [data, dsData, this.dataLayer.getCtx()]);
+      pattern = safeExecuteTbFunction(this.patternFunction, [data, dsData]);
     } else {
       pattern = this.pattern;
     }

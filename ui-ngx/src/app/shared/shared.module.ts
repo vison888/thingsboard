@@ -185,7 +185,6 @@ import { ToggleHeaderComponent, ToggleOption } from '@shared/components/toggle-h
 import { RuleChainSelectComponent } from '@shared/components/rule-chain/rule-chain-select.component';
 import { ToggleSelectComponent } from '@shared/components/toggle-select.component';
 import { UnitInputComponent } from '@shared/components/unit-input.component';
-import { UnitSettingsPanelComponent } from '@shared/components/unit-settings-panel.component';
 import { MaterialIconsComponent } from '@shared/components/material-icons.component';
 import { ColorPickerPanelComponent } from '@shared/components/color-picker/color-picker-panel.component';
 import { TbIconComponent } from '@shared/components/icon.component';
@@ -227,7 +226,6 @@ import { JsFuncModulesComponent } from '@shared/components/js-func-modules.compo
 import { JsFuncModuleRowComponent } from '@shared/components/js-func-module-row.component';
 import { EntityKeyAutocompleteComponent } from '@shared/components/entity/entity-key-autocomplete.component';
 import { DurationLeftPipe } from '@shared/pipe/duration-left.pipe';
-import { MqttVersionSelectComponent } from '@shared/components/mqtt-version-select.component';
 
 export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService) {
   return markedOptionsService;
@@ -276,8 +274,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     {
       provide: MAT_AUTOCOMPLETE_DEFAULT_OPTIONS,
       useValue: {
-        hasBackdrop: true,
-        backdropClass: 'cdk-overlay-transparent-backdrop',
         hideSingleSelectionIndicator: true
       }
     },
@@ -417,7 +413,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     ToggleOption,
     ToggleSelectComponent,
     UnitInputComponent,
-    UnitSettingsPanelComponent,
     StringAutocompleteComponent,
     MaterialIconsComponent,
     RuleChainSelectComponent,
@@ -442,7 +437,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     HexInputComponent,
     ScadaSymbolInputComponent,
     EntityKeyAutocompleteComponent,
-    MqttVersionSelectComponent,
   ],
   imports: [
     CommonModule,
@@ -706,7 +700,6 @@ export function MarkedOptionsFactory(markedOptionsService: MarkedOptionsService)
     WidgetButtonComponent,
     ScadaSymbolInputComponent,
     EntityKeyAutocompleteComponent,
-    MqttVersionSelectComponent,
   ]
 })
 export class SharedModule { }

@@ -30,12 +30,12 @@ public class EntityNameQueryProcessor extends AbstractSimpleQueryProcessor<Entit
 
     public EntityNameQueryProcessor(TenantRepo repo, QueryContext ctx, EdqsQuery query) {
         super(repo, ctx, query, (EntityNameFilter) query.getEntityFilter(), ((EntityNameFilter) query.getEntityFilter()).getEntityType());
-        pattern = RepositoryUtils.toEntityNameSqlLikePattern(filter.getEntityNameFilter());
+        pattern = RepositoryUtils.toSqlLikePattern(filter.getEntityNameFilter());
     }
 
     @Override
     protected boolean matches(EntityData ed) {
-        return super.matches(ed) && (pattern == null || pattern.matcher(ed.getFields().getName()).matches());
+        return ed.getFields() != null && (pattern == null || pattern.matcher(ed.getFields().getName()).matches());
     }
 
 }

@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.ClassRule;
 import org.junit.rules.ExternalResource;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.OutputFrame;
 
 import java.util.List;
 
@@ -27,9 +26,7 @@ import java.util.List;
 public class AbstractRedisContainer {
 
     @ClassRule(order = 0)
-    public static GenericContainer redis = new GenericContainer("bitnami/valkey:8.0")
-            .withEnv("ALLOW_EMPTY_PASSWORD","yes")
-            .withLogConsumer(s -> log.warn(((OutputFrame) s).getUtf8String().trim()))
+    public static GenericContainer redis = new GenericContainer("redis:7.2")
             .withExposedPorts(6379);
 
     @ClassRule(order = 1)

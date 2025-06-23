@@ -31,8 +31,7 @@ public enum ThingsboardErrorCode {
     TOO_MANY_UPDATES(34),
     VERSION_CONFLICT(35),
     SUBSCRIPTION_VIOLATION(40),
-    PASSWORD_VIOLATION(45),
-    DATABASE(46);
+    PASSWORD_VIOLATION(45);
 
     private int errorCode;
 

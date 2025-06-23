@@ -20,6 +20,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -33,8 +34,8 @@ import org.thingsboard.server.common.data.id.CustomerId;
 import org.thingsboard.server.common.data.id.DashboardId;
 import org.thingsboard.server.common.data.id.IdBased;
 import org.thingsboard.server.common.data.id.TenantId;
-import org.thingsboard.server.common.data.oauth2.OAuth2Client;
 import org.thingsboard.server.common.data.oauth2.OAuth2MapperConfig;
+import org.thingsboard.server.common.data.oauth2.OAuth2Client;
 import org.thingsboard.server.common.data.page.PageData;
 import org.thingsboard.server.common.data.page.PageLink;
 import org.thingsboard.server.common.data.security.Authority;
@@ -47,16 +48,17 @@ import org.thingsboard.server.dao.tenant.TenantService;
 import org.thingsboard.server.dao.user.UserService;
 import org.thingsboard.server.service.entitiy.tenant.TbTenantService;
 import org.thingsboard.server.service.entitiy.user.TbUserService;
+import org.thingsboard.server.service.install.InstallScripts;
 import org.thingsboard.server.service.security.model.SecurityUser;
 import org.thingsboard.server.service.security.model.UserPrincipal;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 public abstract class AbstractOAuth2ClientMapper {
-
     private static final int DASHBOARDS_REQUEST_LIMIT = 10;
 
     @Autowired
@@ -78,10 +80,16 @@ public abstract class AbstractOAuth2ClientMapper {
     private DashboardService dashboardService;
 
     @Autowired
+    private InstallScripts installScripts;
+
+    @Autowired
     private TbUserService tbUserService;
 
     @Autowired
     protected TbTenantProfileCache tenantProfileCache;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Value("${edges.enabled}")
     @Getter
@@ -112,7 +120,8 @@ public abstract class AbstractOAuth2ClientMapper {
                     } else {
                         user.setAuthority(Authority.CUSTOMER_USER);
                     }
-                    TenantId tenantId = oauth2User.getTenantId() != null ? oauth2User.getTenantId() : getTenantId(oauth2User.getTenantName());
+                    TenantId tenantId = oauth2User.getTenantId() != null ?
+                            oauth2User.getTenantId() : getTenantId(oauth2User.getTenantName());
                     user.setTenantId(tenantId);
                     CustomerId customerId = oauth2User.getCustomerId() != null ?
                             oauth2User.getCustomerId() : getCustomerId(user.getTenantId(), oauth2User.getCustomerName());
@@ -164,15 +173,17 @@ public abstract class AbstractOAuth2ClientMapper {
         }
     }
 
-    private TenantId getTenantId(String name) throws Exception {
-        Tenant tenant = tenantService.findTenantByName(name);
-        if (tenant != null) {
-            return tenant.getId();
+    private TenantId getTenantId(String tenantName) throws Exception {
+        List<Tenant> tenants = tenantService.findTenants(new PageLink(1, 0, tenantName)).getData();
+        Tenant tenant;
+        if (tenants == null || tenants.isEmpty()) {
+            tenant = new Tenant();
+            tenant.setTitle(tenantName);
+            tenant = tbTenantService.save(tenant);
+        } else {
+            tenant = tenants.get(0);
         }
-        tenant = new Tenant();
-        tenant.setTitle(name);
-        tenant = tbTenantService.save(tenant);
-        return tenant.getId();
+        return tenant.getTenantId();
     }
 
     private CustomerId getCustomerId(TenantId tenantId, String customerName) {
@@ -209,5 +220,4 @@ public abstract class AbstractOAuth2ClientMapper {
         } while (dashboardsPage.hasNext());
         return Optional.empty();
     }
-
 }

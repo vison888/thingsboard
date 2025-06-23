@@ -16,13 +16,14 @@
 package org.thingsboard.server.queue.edqs;
 
 import org.springframework.stereotype.Component;
+import org.thingsboard.common.util.ThingsBoardExecutors;
 import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.common.stats.StatsType;
 import org.thingsboard.server.gen.transport.TransportProtos.FromEdqsMsg;
 import org.thingsboard.server.gen.transport.TransportProtos.ToEdqsMsg;
-import org.thingsboard.server.queue.TbQueueHandler;
 import org.thingsboard.server.queue.TbQueueProducer;
-import org.thingsboard.server.queue.common.PartitionedQueueResponseTemplate;
+import org.thingsboard.server.queue.TbQueueResponseTemplate;
+import org.thingsboard.server.queue.common.DefaultTbQueueResponseTemplate;
 import org.thingsboard.server.queue.common.TbProtoQueueMsg;
 import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 import org.thingsboard.server.queue.discovery.TopicService;
@@ -44,7 +45,6 @@ public class KafkaEdqsQueueFactory implements EdqsQueueFactory {
     private final TbKafkaAdmin edqsRequestsAdmin;
     private final TbKafkaAdmin edqsStateAdmin;
     private final EdqsConfig edqsConfig;
-    private final EdqsExecutors edqsExecutors;
     private final TbServiceInfoProvider serviceInfoProvider;
     private final TbKafkaConsumerStatsService consumerStatsService;
     private final TopicService topicService;
@@ -53,7 +53,7 @@ public class KafkaEdqsQueueFactory implements EdqsQueueFactory {
     private final AtomicInteger consumerCounter = new AtomicInteger();
 
     public KafkaEdqsQueueFactory(TbKafkaSettings kafkaSettings, TbKafkaTopicConfigs topicConfigs,
-                                 EdqsConfig edqsConfig, EdqsExecutors edqsExecutors, TbServiceInfoProvider serviceInfoProvider,
+                                 EdqsConfig edqsConfig, TbServiceInfoProvider serviceInfoProvider,
                                  TbKafkaConsumerStatsService consumerStatsService, TopicService topicService,
                                  StatsFactory statsFactory) {
         this.edqsEventsAdmin = new TbKafkaAdmin(kafkaSettings, topicConfigs.getEdqsEventsConfigs());
@@ -61,7 +61,6 @@ public class KafkaEdqsQueueFactory implements EdqsQueueFactory {
         this.edqsStateAdmin = new TbKafkaAdmin(kafkaSettings, topicConfigs.getEdqsStateConfigs());
         this.kafkaSettings = kafkaSettings;
         this.edqsConfig = edqsConfig;
-        this.edqsExecutors = edqsExecutors;
         this.serviceInfoProvider = serviceInfoProvider;
         this.consumerStatsService = consumerStatsService;
         this.topicService = topicService;
@@ -117,29 +116,25 @@ public class KafkaEdqsQueueFactory implements EdqsQueueFactory {
     }
 
     @Override
-    public PartitionedQueueResponseTemplate<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> createEdqsResponseTemplate(TbQueueHandler<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> handler) {
+    public TbQueueResponseTemplate<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>> createEdqsResponseTemplate() {
+        var requestConsumer = createEdqsMsgConsumer(edqsConfig.getRequestsTopic(),
+                "edqs-requests-consumer-" + serviceInfoProvider.getServiceId(),
+                "edqs-requests-consumer-group",
+                false, edqsRequestsAdmin);
         var responseProducer = TbKafkaProducerTemplate.<TbProtoQueueMsg<FromEdqsMsg>>builder()
                 .settings(kafkaSettings)
                 .clientId("edqs-response-producer-" + serviceInfoProvider.getServiceId())
                 .defaultTopic(topicService.buildTopicName(edqsConfig.getResponsesTopic()))
                 .admin(edqsRequestsAdmin)
                 .build();
-        return PartitionedQueueResponseTemplate.<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>>builder()
-                .key("edqs")
-                .handler(handler)
-                .requestsTopic(topicService.buildTopicName(edqsConfig.getRequestsTopic()))
-                .consumerCreator(tpi -> createEdqsMsgConsumer(edqsConfig.getRequestsTopic(),
-                        "edqs-requests-consumer-" + serviceInfoProvider.getServiceId() + "-" + tpi.getPartition().orElse(999),
-                        "edqs-requests-consumer-group",
-                        false, edqsRequestsAdmin))
-                .responseProducer(responseProducer)
-                .pollInterval(edqsConfig.getPollInterval())
-                .requestTimeout(edqsConfig.getMaxRequestTimeout())
+        return DefaultTbQueueResponseTemplate.<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<FromEdqsMsg>>builder()
+                .requestTemplate(requestConsumer)
+                .responseTemplate(responseProducer)
                 .maxPendingRequests(edqsConfig.getMaxPendingRequests())
-                .consumerExecutor(edqsExecutors.getConsumersExecutor())
-                .callbackExecutor(edqsExecutors.getRequestExecutor())
-                .consumerTaskExecutor(edqsExecutors.getConsumerTaskExecutor())
+                .requestTimeout(edqsConfig.getMaxRequestTimeout())
+                .pollInterval(edqsConfig.getPollInterval())
                 .stats(statsFactory.createMessagesStats(StatsType.EDQS.getName()))
+                .executor(ThingsBoardExecutors.newWorkStealingPool(5, "edqs"))
                 .build();
     }
 

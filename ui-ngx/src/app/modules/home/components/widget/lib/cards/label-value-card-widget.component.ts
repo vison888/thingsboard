@@ -33,13 +33,12 @@ import {
   backgroundStyle,
   ColorProcessor,
   ComponentStyle,
-  createValueFormatterFromSettings,
+  getDataKey,
   getSingleTsValue,
   iconStyle,
   overlayStyle,
   resolveCssSize,
-  textStyle,
-  ValueFormatProcessor
+  textStyle
 } from '@shared/models/widget-settings.models';
 import { ImagePipe } from '@shared/pipe/image.pipe';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -47,7 +46,7 @@ import {
   labelValueCardWidgetDefaultSettings,
   LabelValueCardWidgetSettings
 } from '@home/components/widget/lib/cards/label-value-card-widget.models';
-import { isDefinedAndNotNull } from '@core/utils';
+import { formatValue, isDefinedAndNotNull } from '@core/utils';
 
 @Component({
   selector: 'tb-label-value-card-widget',
@@ -95,7 +94,9 @@ export class LabelValueCardWidgetComponent implements OnInit, AfterViewInit, OnD
   hasCardClickAction = false;
 
   private panelResize$: ResizeObserver;
-  private valueFormat: ValueFormatProcessor;
+
+  private decimals = 0;
+  private units = '';
 
   constructor(private imagePipe: ImagePipe,
               private sanitizer: DomSanitizer,
@@ -107,7 +108,15 @@ export class LabelValueCardWidgetComponent implements OnInit, AfterViewInit, OnD
     this.ctx.$scope.labelValueCardWidget = this;
     this.settings = {...labelValueCardWidgetDefaultSettings, ...this.ctx.settings};
 
-    this.valueFormat = createValueFormatterFromSettings(this.ctx);
+    this.decimals = this.ctx.decimals;
+    this.units = this.ctx.units;
+    const dataKey = getDataKey(this.ctx.datasources);
+    if (isDefinedAndNotNull(dataKey?.decimals)) {
+      this.decimals = dataKey.decimals;
+    }
+    if (dataKey?.units) {
+      this.units = dataKey.units;
+    }
 
     this.backgroundStyle$ = backgroundStyle(this.settings.background, this.imagePipe, this.sanitizer);
     this.overlayStyle = overlayStyle(this.settings.background.overlay);
@@ -158,7 +167,7 @@ export class LabelValueCardWidgetComponent implements OnInit, AfterViewInit, OnD
     let value;
     if (tsValue && isDefinedAndNotNull(tsValue[1]) && tsValue[0] !== 0) {
       value = tsValue[1];
-      this.valueText = this.valueFormat.format(value);
+      this.valueText = formatValue(value, this.decimals, this.units, false);
     } else {
       this.valueText = 'N/A';
     }

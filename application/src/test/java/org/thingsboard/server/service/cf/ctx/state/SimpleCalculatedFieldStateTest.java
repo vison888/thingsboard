@@ -34,7 +34,6 @@ import org.thingsboard.server.common.data.cf.configuration.SimpleCalculatedField
 import org.thingsboard.server.common.data.id.AssetId;
 import org.thingsboard.server.common.data.id.DeviceId;
 import org.thingsboard.server.common.data.id.TenantId;
-import org.thingsboard.server.common.data.kv.BooleanDataEntry;
 import org.thingsboard.server.common.data.kv.DoubleDataEntry;
 import org.thingsboard.server.common.data.kv.LongDataEntry;
 import org.thingsboard.server.common.data.kv.StringDataEntry;
@@ -144,7 +143,7 @@ public class SimpleCalculatedFieldStateTest {
     }
 
     @Test
-    void testPerformCalculationWhenPassedString() {
+    void testPerformCalculationWhenPassedNotNumber() {
         state.arguments = new HashMap<>(Map.of(
                 "key1", key1ArgEntry,
                 "key2", new SingleValueArgumentEntry(System.currentTimeMillis() - 9, new StringDataEntry("key2", "string"), 124L),
@@ -154,23 +153,6 @@ public class SimpleCalculatedFieldStateTest {
         assertThatThrownBy(() -> state.performCalculation(ctx))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Argument 'key2' is not a number.");
-    }
-
-    @Test
-    void testPerformCalculationWhenPassedBoolean() throws ExecutionException, InterruptedException {
-        state.arguments = new HashMap<>(Map.of(
-                "key1", key1ArgEntry,
-                "key2", new SingleValueArgumentEntry(System.currentTimeMillis() - 9, new BooleanDataEntry("key2", true), 124L),// true is parsed as 1
-                "key3", key3ArgEntry
-        ));
-
-        CalculatedFieldResult result = state.performCalculation(ctx).get();
-
-        assertThat(result).isNotNull();
-        Output output = getCalculatedFieldConfig().getOutput();
-        assertThat(result.getType()).isEqualTo(output.getType());
-        assertThat(result.getScope()).isEqualTo(output.getScope());
-        assertThat(result.getResult()).isEqualTo(JacksonUtil.valueToTree(Map.of("output", 35)));
     }
 
     @Test

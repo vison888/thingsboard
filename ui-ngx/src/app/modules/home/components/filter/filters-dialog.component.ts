@@ -14,19 +14,19 @@
 /// limitations under the License.
 ///
 
-import { Component, Inject, SkipSelf } from '@angular/core';
+import { Component, Inject, OnInit, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
 import {
   AbstractControl,
-  FormGroupDirective,
-  NgForm,
   UntypedFormArray,
   UntypedFormBuilder,
   UntypedFormControl,
   UntypedFormGroup,
+  FormGroupDirective,
+  NgForm,
   Validators
 } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -58,7 +58,7 @@ export interface FiltersDialogData {
   styleUrls: ['./filters-dialog.component.scss']
 })
 export class FiltersDialogComponent extends DialogComponent<FiltersDialogComponent, Filters>
-  implements ErrorStateMatcher {
+  implements OnInit, ErrorStateMatcher {
 
   title: string;
   disableAdd: boolean;
@@ -96,16 +96,15 @@ export class FiltersDialogComponent extends DialogComponent<FiltersDialogCompone
         }
       } else {
         this.data.widgets.forEach((widget) => {
-          this.dashboardUtils.getWidgetDatasources(widget).forEach((datasource) => {
-            if (datasource.type !== DatasourceType.function && datasource.filterId) {
+          const datasources = this.dashboardUtils.validateAndUpdateDatasources(widget.config.datasources);
+          datasources.forEach((datasource) => {
+            if (datasource.type === DatasourceType.entity && datasource.filterId) {
               widgetsTitleList = this.filterToWidgetsMap[datasource.filterId];
               if (!widgetsTitleList) {
                 widgetsTitleList = [];
                 this.filterToWidgetsMap[datasource.filterId] = widgetsTitleList;
               }
-              if (!widgetsTitleList.includes(widget.config.title)) {
-                widgetsTitleList.push(widget.config.title);
-              }
+              widgetsTitleList.push(widget.config.title);
             }
           });
         });
@@ -139,6 +138,9 @@ export class FiltersDialogComponent extends DialogComponent<FiltersDialogCompone
 
   filtersFormArray(): UntypedFormArray {
     return this.filtersFormGroup.get('filters') as UntypedFormArray;
+  }
+
+  ngOnInit(): void {
   }
 
   isErrorState(control: UntypedFormControl | null, form: FormGroupDirective | NgForm | null): boolean {

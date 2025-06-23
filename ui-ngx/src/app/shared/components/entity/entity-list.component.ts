@@ -14,7 +14,17 @@
 /// limitations under the License.
 ///
 
-import { Component, ElementRef, forwardRef, Input, OnChanges, OnInit, SimpleChanges, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  forwardRef,
+  Input,
+  OnChanges,
+  OnInit,
+  SimpleChanges,
+  ViewChild
+} from '@angular/core';
 import {
   ControlValueAccessor,
   NG_VALIDATORS,
@@ -55,7 +65,7 @@ import { isArray } from 'lodash';
     }
   ]
 })
-export class EntityListComponent implements ControlValueAccessor, OnInit, OnChanges {
+export class EntityListComponent implements ControlValueAccessor, OnInit, AfterViewInit, OnChanges {
 
   entityListFormGroup: UntypedFormGroup;
 
@@ -105,10 +115,6 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
   @coerceBoolean()
   syncIdsWithDB = false;
 
-  @Input()
-  @coerceBoolean()
-  inlineField: boolean;
-
   @ViewChild('entityInput') entityInput: ElementRef<HTMLInputElement>;
   @ViewChild('entityAutocomplete') matAutocomplete: MatAutocomplete;
   @ViewChild('chipList', {static: true}) chipList: MatChipGrid;
@@ -120,9 +126,9 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
 
   private dirty = false;
 
-  private propagateChange = (_v: any) => { };
+  private propagateChange = (v: any) => { };
 
-  constructor(private translate: TranslateService,
+  constructor(public translate: TranslateService,
               private entityService: EntityService,
               private fb: UntypedFormBuilder) {
     this.entityListFormGroup = this.fb.group({
@@ -140,7 +146,7 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
     this.propagateChange = fn;
   }
 
-  registerOnTouched(_fn: any): void {
+  registerOnTouched(fn: any): void {
   }
 
   ngOnInit() {
@@ -170,6 +176,9 @@ export class EntityListComponent implements ControlValueAccessor, OnInit, OnChan
         }
       }
     }
+  }
+
+  ngAfterViewInit(): void {
   }
 
   setDisabledState(isDisabled: boolean): void {

@@ -20,8 +20,6 @@ package transport;
 option java_package = "org.thingsboard.server.gen.transport";
 option java_outer_classname = "TransportProtos";
 
-import "tbmsg.proto";
-
 /**
  * Common data structures
  */
@@ -63,7 +61,6 @@ enum EntityTypeProto {
   MOBILE_APP_BUNDLE     = 38;
   CALCULATED_FIELD      = 39;
   CALCULATED_FIELD_LINK = 40;
-  JOB                   = 41;
 }
 
 enum ApiUsageRecordKeyProto {
@@ -90,8 +87,6 @@ message ServiceInfo {
   SystemInfoProto systemInfo = 10;
   repeated string assignedTenantProfiles = 11;
   string label = 12;
-  bool ready = 13;
-  repeated string taskTypes = 14;
 }
 
 message SystemInfoProto {
@@ -130,8 +125,7 @@ message SessionInfoProto {
 message RestApiCallResponseMsgProto {
   int64 requestIdMSB = 1;
   int64 requestIdLSB = 2;
-  bytes response = 5 [deprecated = true];
-  msgqueue.TbMsgProto responseProto = 6;
+  bytes response = 5;
 }
 
 enum SessionEvent {
@@ -1265,7 +1259,6 @@ message ComponentLifecycleMsgProto {
   int64 oldProfileIdLSB = 10;
   int64 profileIdMSB = 11;
   int64 profileIdLSB = 12;
-  optional string info = 13;
 }
 
 message EdgeEventMsgProto {
@@ -1707,10 +1700,9 @@ message ToCalculatedFieldNotificationMsg {
 message ToRuleEngineMsg {
   int64 tenantIdMSB = 1;
   int64 tenantIdLSB = 2;
-  bytes tbMsg = 3 [deprecated = true]; // for removal in 4.2
+  bytes tbMsg = 3;
   repeated string relationTypes = 4;
   string failureMessage = 5;
-  msgqueue.TbMsgProto tbMsgProto = 6;
 }
 
 message ToRuleEngineNotificationMsg {
@@ -1840,6 +1832,7 @@ message FromEdqsMsg {
 }
 
 message EdqsEventMsg {
+  string key = 1;
   string objectType = 2;
   bytes data = 3;
   string eventType = 4;
@@ -1851,22 +1844,5 @@ message EdqsRequestMsg {
 }
 
 message EdqsResponseMsg {
-  string value = 1;
-}
-
-message TaskProto {
-  string value = 1;
-}
-
-message JobStatsMsg {
-  int64 tenantIdMSB = 1;
-  int64 tenantIdLSB = 2;
-  int64 jobIdMSB = 3;
-  int64 jobIdLSB = 4;
-  optional TaskResultProto taskResult = 5;
-  optional int32 totalTasksCount = 6;
-}
-
-message TaskResultProto {
   string value = 1;
 }

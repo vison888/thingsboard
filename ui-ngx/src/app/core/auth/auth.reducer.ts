@@ -17,7 +17,6 @@
 import { AuthPayload, AuthState } from './auth.models';
 import { AuthActions, AuthActionTypes } from './auth.actions';
 import { initialUserSettings, UserSettings } from '@shared/models/user-settings.models';
-import { initialTrendzSettings } from '@shared/models/trendz-settings.models';
 import { unset } from '@core/utils';
 
 const emptyUserAuthState: AuthPayload = {
@@ -35,8 +34,7 @@ const emptyUserAuthState: AuthPayload = {
   maxArgumentsPerCF: 0,
   maxDataPointsPerRollingArg: 0,
   maxDebugModeDurationMinutes: 0,
-  userSettings: initialUserSettings,
-  trendzSettings: initialTrendzSettings
+  userSettings: initialUserSettings
 };
 
 export const initialState: AuthState = {

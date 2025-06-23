@@ -70,7 +70,7 @@ public interface RuleEngineAlarmService {
     AlarmApiCallResult unassignAlarm(TenantId tenantId, AlarmId alarmId, long assignTs);
 
     // Other API
-    boolean deleteAlarm(TenantId tenantId, AlarmId alarmId);
+    Boolean deleteAlarm(TenantId tenantId, AlarmId alarmId);
 
     ListenableFuture<Alarm> findAlarmByIdAsync(TenantId tenantId, AlarmId alarmId);
 
@@ -99,5 +99,4 @@ public interface RuleEngineAlarmService {
     PageData<AlarmData> findAlarmDataByQueryForEntities(TenantId tenantId, AlarmDataQuery query, Collection<EntityId> orderedEntityIds);
 
     PageData<EntitySubtype> findAlarmTypesByTenantId(TenantId tenantId, PageLink pageLink);
-
 }

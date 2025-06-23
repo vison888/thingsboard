@@ -14,26 +14,31 @@
 /// limitations under the License.
 ///
 
-import { Component, DestroyRef, Inject, SkipSelf } from '@angular/core';
+import { Component, DestroyRef, Inject, OnInit, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/core.state';
-import { FormArray, FormBuilder, FormControl, FormGroup, FormGroupDirective, NgForm, Validators } from '@angular/forms';
+import {
+  AbstractControl, UntypedFormArray,
+  UntypedFormBuilder,
+  UntypedFormControl,
+  UntypedFormGroup,
+  FormGroupDirective,
+  NgForm,
+  Validators
+} from '@angular/forms';
 import { Router } from '@angular/router';
 import { DialogComponent } from '@app/shared/components/dialog.component';
 import { TranslateService } from '@ngx-translate/core';
 import {
   EntityKeyValueType,
-  Filter,
-  FilterPredicateValue,
+  Filter, FilterPredicateValue,
   filterToUserFilterInfoList,
   UserFilterInputInfo
 } from '@shared/models/query/query.models';
 import { isDefinedAndNotNull } from '@core/utils';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { UnitService } from '@core/services/unit.service';
-import { getSourceTbUnitSymbol, TbUnitConverter } from '@shared/models/unit.models';
 
 export interface UserFilterDialogData {
   filter: Filter;
@@ -43,14 +48,14 @@ export interface UserFilterDialogData {
   selector: 'tb-user-filter-dialog',
   templateUrl: './user-filter-dialog.component.html',
   providers: [{provide: ErrorStateMatcher, useExisting: UserFilterDialogComponent}],
-  styleUrls: ['./user-filter-dialog.component.scss'],
+  styleUrls: []
 })
 export class UserFilterDialogComponent extends DialogComponent<UserFilterDialogComponent, Filter>
-  implements ErrorStateMatcher {
+  implements OnInit, ErrorStateMatcher {
 
   filter: Filter;
 
-  userFilterFormGroup: FormGroup;
+  userFilterFormGroup: UntypedFormGroup;
 
   valueTypeEnum = EntityKeyValueType;
 
@@ -61,15 +66,14 @@ export class UserFilterDialogComponent extends DialogComponent<UserFilterDialogC
               @Inject(MAT_DIALOG_DATA) public data: UserFilterDialogData,
               @SkipSelf() private errorStateMatcher: ErrorStateMatcher,
               public dialogRef: MatDialogRef<UserFilterDialogComponent, Filter>,
-              private fb: FormBuilder,
-              private translate: TranslateService,
-              private destroyRef: DestroyRef,
-              private unitService: UnitService) {
+              private fb: UntypedFormBuilder,
+              public translate: TranslateService,
+              private destroyRef: DestroyRef) {
     super(store, router, dialogRef);
     this.filter = data.filter;
-    const userInputs = filterToUserFilterInfoList(this.filter, this.translate);
+    const userInputs = filterToUserFilterInfoList(this.filter, translate);
 
-    const userInputControls: Array<FormGroup> = [];
+    const userInputControls: Array<AbstractControl> = [];
     for (const userInput of userInputs) {
       userInputControls.push(this.createUserInputFormControl(userInput));
     }
@@ -79,21 +83,12 @@ export class UserFilterDialogComponent extends DialogComponent<UserFilterDialogC
     });
   }
 
-  private createUserInputFormControl(userInput: UserFilterInputInfo): FormGroup {
+  private createUserInputFormControl(userInput: UserFilterInputInfo): AbstractControl {
     const predicateValue: FilterPredicateValue<string | number | boolean> = (userInput.info.keyFilterPredicate as any).value;
-    let value = isDefinedAndNotNull(predicateValue.userValue) ? predicateValue.userValue : predicateValue.defaultValue;
-    let unitSymbol = '';
-    let valueConvertor: TbUnitConverter;
-    if (userInput.valueType === EntityKeyValueType.NUMERIC) {
-      unitSymbol = this.unitService.getTargetUnitSymbol(userInput.unit);
-      const sourceUnit = getSourceTbUnitSymbol(userInput.unit);
-      value = this.unitService.convertUnitValue(value as number, userInput.unit);
-      valueConvertor = this.unitService.geUnitConverter(unitSymbol, sourceUnit);
-    }
+    const value = isDefinedAndNotNull(predicateValue.userValue) ? predicateValue.userValue : predicateValue.defaultValue;
     const userInputControl = this.fb.group({
       label: [userInput.label],
       valueType: [userInput.valueType],
-      unitSymbol: [unitSymbol],
       value: [value,
         userInput.valueType === EntityKeyValueType.NUMERIC ||
         userInput.valueType === EntityKeyValueType.DATE_TIME  ? [Validators.required] : []]
@@ -101,20 +96,19 @@ export class UserFilterDialogComponent extends DialogComponent<UserFilterDialogC
     userInputControl.get('value').valueChanges.pipe(
       takeUntilDestroyed(this.destroyRef)
     ).subscribe(userValue => {
-      let value = userValue;
-      if (valueConvertor) {
-        value = valueConvertor(value as number);
-      }
-      (userInput.info.keyFilterPredicate as any).value.userValue = value;
+      (userInput.info.keyFilterPredicate as any).value.userValue = userValue;
     });
     return userInputControl;
   }
 
-  userInputsFormArray(): FormArray {
-    return this.userFilterFormGroup.get('userInputs') as FormArray;
+  userInputsFormArray(): UntypedFormArray {
+    return this.userFilterFormGroup.get('userInputs') as UntypedFormArray;
   }
 
-  isErrorState(control: FormControl | null, form: FormGroupDirective | NgForm | null): boolean {
+  ngOnInit(): void {
+  }
+
+  isErrorState(control: UntypedFormControl | null, form: FormGroupDirective | NgForm | null): boolean {
     const originalErrorState = this.errorStateMatcher.isErrorState(control, form);
     const customErrorState = !!(control && control.invalid && this.submitted);
     return originalErrorState || customErrorState;

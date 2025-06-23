@@ -25,6 +25,12 @@ public interface EdqsApiService {
 
     ListenableFuture<EdqsResponse> processRequest(TenantId tenantId, CustomerId customerId, EdqsRequest request);
 
+    boolean isEnabled();
+
+    void setEnabled(boolean enabled);
+
     boolean isSupported();
+
+    boolean isAutoEnable();
 
 }

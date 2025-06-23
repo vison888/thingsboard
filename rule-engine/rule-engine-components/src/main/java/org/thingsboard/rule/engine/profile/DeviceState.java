@@ -15,7 +15,6 @@
  */
 package org.thingsboard.rule.engine.profile;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import lombok.extern.slf4j.Slf4j;
 import org.thingsboard.common.util.JacksonUtil;
@@ -50,7 +49,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -68,7 +66,6 @@ import static org.thingsboard.server.common.data.msg.TbMsgType.ENTITY_UNASSIGNED
 import static org.thingsboard.server.common.data.msg.TbMsgType.INACTIVITY_EVENT;
 import static org.thingsboard.server.common.data.msg.TbMsgType.POST_ATTRIBUTES_REQUEST;
 import static org.thingsboard.server.common.data.msg.TbMsgType.POST_TELEMETRY_REQUEST;
-import static org.thingsboard.server.common.data.msg.TbMsgType.TIMESERIES_UPDATED;
 
 @Slf4j
 class DeviceState {
@@ -152,9 +149,7 @@ class DeviceState {
         }
         boolean stateChanged = false;
         if (msg.isTypeOf(POST_TELEMETRY_REQUEST)) {
-            stateChanged = processTelemetryRequest(ctx, msg);
-        } else if (msg.isTypeOf(TIMESERIES_UPDATED)) {
-            stateChanged = processTelemetryUpdatedNotification(ctx, msg);
+            stateChanged = processTelemetry(ctx, msg);
         } else if (msg.isTypeOf(POST_ATTRIBUTES_REQUEST)) {
             stateChanged = processAttributesUpdateRequest(ctx, msg);
         } else if (msg.isTypeOneOf(ACTIVITY_EVENT, INACTIVITY_EVENT)) {
@@ -184,7 +179,7 @@ class DeviceState {
     private boolean processDeviceActivityEvent(TbContext ctx, TbMsg msg) throws ExecutionException, InterruptedException {
         String scope = msg.getMetaData().getValue(DataConstants.SCOPE);
         if (StringUtils.isEmpty(scope)) {
-            return processTelemetryRequest(ctx, msg);
+            return processTelemetry(ctx, msg);
         } else {
             return processAttributes(ctx, msg, scope);
         }
@@ -271,22 +266,9 @@ class DeviceState {
         return stateChanged;
     }
 
-    protected boolean processTelemetryRequest(TbContext ctx, TbMsg msg) throws ExecutionException, InterruptedException {
-        return processTelemetryUpdate(ctx, msg, JsonParser.parseString(msg.getData()));
-    }
-
-    protected boolean processTelemetryUpdatedNotification(TbContext ctx, TbMsg msg) throws ExecutionException, InterruptedException {
-        JsonElement msgData = JsonParser.parseString(msg.getData());
-        JsonElement telemetryData = Optional.ofNullable(JsonParser.parseString(msg.getData()))
-                .filter(JsonElement::isJsonObject)
-                .map(e -> e.getAsJsonObject().get("timeseries"))
-                .orElse(msgData);
-        return processTelemetryUpdate(ctx, msg, telemetryData);
-    }
-
-    private boolean processTelemetryUpdate(TbContext ctx, TbMsg msg, JsonElement telemetryData) throws ExecutionException, InterruptedException {
+    protected boolean processTelemetry(TbContext ctx, TbMsg msg) throws ExecutionException, InterruptedException {
         boolean stateChanged = false;
-        Map<Long, List<KvEntry>> tsKvMap = JsonConverter.convertToSortedTelemetry(telemetryData, msg.getMetaDataTs());
+        Map<Long, List<KvEntry>> tsKvMap = JsonConverter.convertToSortedTelemetry(JsonParser.parseString(msg.getData()), msg.getMetaDataTs());
         // iterate over data by ts (ASC order).
         for (Map.Entry<Long, List<KvEntry>> entry : tsKvMap.entrySet()) {
             Long ts = entry.getKey();

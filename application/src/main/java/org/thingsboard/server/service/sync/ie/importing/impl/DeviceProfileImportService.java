@@ -51,7 +51,7 @@ public class DeviceProfileImportService extends BaseEntityImportService<DevicePr
     }
 
     @Override
-    protected DeviceProfile saveOrUpdate(EntitiesImportCtx ctx, DeviceProfile deviceProfile, EntityExportData<DeviceProfile> exportData, IdProvider idProvider, CompareResult compareResult) {
+    protected DeviceProfile saveOrUpdate(EntitiesImportCtx ctx, DeviceProfile deviceProfile, EntityExportData<DeviceProfile> exportData, IdProvider idProvider) {
         DeviceProfile saved = deviceProfileService.saveDeviceProfile(deviceProfile);
         if (ctx.isFinalImportAttempt() || ctx.getCurrentImportResult().isUpdatedAllExternalIds()) {
             importCalculatedFields(ctx, saved, exportData, idProvider);

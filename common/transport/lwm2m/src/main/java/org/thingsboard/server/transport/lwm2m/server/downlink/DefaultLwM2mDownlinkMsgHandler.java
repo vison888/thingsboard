@@ -113,7 +113,6 @@ import static org.eclipse.leshan.core.link.lwm2m.attributes.LwM2mAttributes.SHOR
 import static org.eclipse.leshan.core.link.lwm2m.attributes.LwM2mAttributes.STEP;
 import static org.eclipse.leshan.core.model.ResourceModel.Type.OBJLNK;
 import static org.eclipse.leshan.core.model.ResourceModel.Type.OPAQUE;
-import static org.thingsboard.server.common.transport.util.JsonUtils.isBase64;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.convertMultiResourceValuesFromRpcBody;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.createModelsDefault;
 import static org.thingsboard.server.transport.lwm2m.utils.LwM2MTransportUtil.fromVersionedIdToObjectId;
@@ -400,8 +399,7 @@ public class DefaultLwM2mDownlinkMsgHandler extends LwM2MExecutorAwareService im
                         try {
                             Object valueForMultiResource = request.getValue();
                             if (resultIds.isResourceInstance()) {
-                                String valueStr =  isBase64(request.getValue().toString()) ? "\"" + request.getValue() + "\"" : request.getValue().toString();
-                                String resourceInstance = "{" + resultIds.getResourceInstanceId() + "=" + valueStr + "}";
+                                String resourceInstance = "{" + resultIds.getResourceInstanceId() + "=" + request.getValue() + "}";
                                 valueForMultiResource = JsonParser.parseString(resourceInstance);
                             }
                             Map<Integer, Object> value = convertMultiResourceValuesFromRpcBody(valueForMultiResource, resourceModelWrite.type, request.getObjectId());

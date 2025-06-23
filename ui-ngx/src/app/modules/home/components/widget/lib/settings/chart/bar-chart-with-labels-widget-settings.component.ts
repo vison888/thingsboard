@@ -30,7 +30,6 @@ import { DateFormatProcessor, DateFormatSettings } from '@shared/models/widget-s
 import {
   barChartWithLabelsDefaultSettings
 } from '@home/components/widget/lib/chart/bar-chart-with-labels-widget.models';
-import { getSourceTbUnitSymbol } from '@shared/models/unit.models';
 
 @Component({
   selector: 'tb-bar-chart-with-labels-widget-settings',
@@ -201,7 +200,7 @@ export class BarChartWithLabelsWidgetSettingsComponent extends WidgetSettingsCom
   }
 
   private _tooltipValuePreviewFn(): string {
-    const units = getSourceTbUnitSymbol(this.widgetConfig.config.units);
+    const units: string = this.widgetConfig.config.units;
     const decimals: number = this.widgetConfig.config.decimals;
     return formatValue(22, decimals, units, false);
   }

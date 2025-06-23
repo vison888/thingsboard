@@ -43,6 +43,7 @@ import {
   isDefined,
   isDefinedAndNotNull,
   isNotEmptyStr,
+  isNumber,
   isObject,
   isUndefined
 } from '@core/utils';
@@ -76,8 +77,6 @@ import {
   getHeaderTitle,
   getRowStyleInfo,
   getTableCellButtonActions,
-  isValidPageStepCount,
-  isValidPageStepIncrement,
   noDataMessage,
   prepareTableCellButtonActions,
   RowStyleInfo,
@@ -142,7 +141,6 @@ import {
 import { getCurrentAuthUser } from '@core/auth/auth.selectors';
 import { FormBuilder } from '@angular/forms';
 import { DEFAULT_OVERLAY_POSITIONS } from '@shared/models/overlay.models';
-import { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 interface AlarmsTableWidgetSettings extends TableWidgetSettings {
   alarmsTitle: string;
@@ -340,6 +338,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
   public onDataUpdated() {
     this.alarmsDatasource.updateAlarms();
     this.clearCache();
+    this.ctx.detectChanges();
   }
 
   public onEditModeChanged() {
@@ -393,10 +392,10 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     this.rowStylesInfo = getRowStyleInfo(this.ctx, this.settings, 'alarm, ctx');
 
     const pageSize = this.settings.defaultPageSize;
-    let pageStepIncrement = isValidPageStepIncrement(this.settings.pageStepIncrement) ? this.settings.pageStepIncrement : null;
-    let pageStepCount = isValidPageStepCount(this.settings.pageStepCount) ? this.settings.pageStepCount : null;
+    let pageStepIncrement = this.settings.pageStepIncrement;
+    let pageStepCount = this.settings.pageStepCount;
 
-    if (Number.isInteger(pageSize) && pageSize > 0) {
+    if (isDefined(pageSize) && isNumber(pageSize) && pageSize > 0) {
       this.defaultPageSize = pageSize;
     }
 
@@ -457,13 +456,12 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
         }
         this.stylesInfo[dataKey.def] = getCellStyleInfo(this.ctx, keySettings, 'value, alarm, ctx');
         const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, alarm, ctx');
-        const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
-        const units = dataKey.units || this.ctx.widgetConfig.units;
-        const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
-        this.contentsInfo[dataKey.def] = {
+        const contentInfo: CellContentInfo = {
           contentFunction: contentFunctionInfo,
-          valueFormat
+          units: dataKey.units,
+          decimals: dataKey.decimals
         };
+        this.contentsInfo[dataKey.def] = contentInfo;
         this.columnWidth[dataKey.def] = getColumnWidth(keySettings);
         this.columnDefaultVisibility[dataKey.def] = getColumnDefaultVisibility(keySettings, this.ctx);
         this.columnSelectionAvailability[dataKey.def] = getColumnSelectionAvailability(keySettings);
@@ -743,7 +741,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
 
   public rowStyle(alarm: AlarmDataInfo, row: number): Observable<any> {
     let style$: Observable<any>;
-    const res = this.rowStyleCache[row];
+    let res = this.rowStyleCache[row];
     if (!res) {
       style$ = this.rowStylesInfo.pipe(
         map(styleInfo => {
@@ -781,7 +779,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     let style$: Observable<any>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    const res = this.cellStyleCache[index];
+    let res = this.cellStyleCache[index];
     if (!res) {
       if (alarm && key) {
         style$ = this.stylesInfo[key.def].pipe(
@@ -831,7 +829,7 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
     let content$: Observable<SafeHtml>;
     const col = this.columns.indexOf(key);
     const index = row * this.columns.length + col;
-    const res = this.cellContentCache[index];
+    let res = this.cellContentCache[index];
     if (isUndefined(res)) {
       const contentInfo = this.contentsInfo[key.def];
       content$ = contentInfo.contentFunction.pipe(
@@ -1136,7 +1134,9 @@ export class AlarmsTableWidgetComponent extends PageComponent implements OnInit,
           return this.datePipe.transform(value, 'yyyy-MM-dd HH:mm:ss');
         }
       }
-      return contentInfo.valueFormat.format(value);
+      const decimals = (contentInfo.decimals || contentInfo.decimals === 0) ? contentInfo.decimals : this.ctx.widgetConfig.decimals;
+      const units = contentInfo.units || this.ctx.widgetConfig.units;
+      return this.ctx.utils.formatValue(value, decimals, units, true);
     } else {
       return '';
     }
@@ -1350,7 +1350,7 @@ class AlarmsDatasource implements DataSource<AlarmDataInfo> {
     const alarm: AlarmDataInfo = deepClone(alarmData);
     delete alarm.latest;
     const latest = alarmData.latest;
-    this.dataKeys.forEach((dataKey) => {
+    this.dataKeys.forEach((dataKey, index) => {
       const type = dataKeyTypeToEntityKeyType(dataKey.type);
       let value = '';
       if (type) {

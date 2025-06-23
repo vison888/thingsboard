@@ -129,16 +129,15 @@ export class OtaPackageService {
     }
     return forkJoin(tasks).pipe(
       mergeMap(([deviceFirmwareUpdate, deviceSoftwareUpdate]) => {
-        const lines: string[] = [];
+        let text = '';
         if (deviceFirmwareUpdate > 0) {
-          lines.push(this.translate.instant('ota-update.change-firmware', {count: deviceFirmwareUpdate}));
+          text += this.translate.instant('ota-update.change-firmware', {count: deviceFirmwareUpdate});
         }
         if (deviceSoftwareUpdate > 0) {
-          lines.push(this.translate.instant('ota-update.change-software', {count: deviceSoftwareUpdate}));
+          text += text.length ? ' ' : '';
+          text += this.translate.instant('ota-update.change-software', {count: deviceSoftwareUpdate});
         }
-        return lines.length
-          ? this.dialogService.confirm(this.translate.instant('ota-update.change-ota-setting-title'), lines.join('<br/>'), null, this.translate.instant('common.proceed'))
-          : of(true);
+        return text !== '' ? this.dialogService.confirm('', text, null, this.translate.instant('common.proceed')) : of(true);
       })
     );
   }

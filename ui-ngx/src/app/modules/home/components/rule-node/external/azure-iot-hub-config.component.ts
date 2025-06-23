@@ -53,7 +53,6 @@ export class AzureIotHubConfigComponent extends RuleNodeConfigurationComponent {
       clientId: [configuration ? configuration.clientId : null, [Validators.required]],
       cleanSession: [configuration ? configuration.cleanSession : false, []],
       ssl: [configuration ? configuration.ssl : false, []],
-      protocolVersion: [configuration ? configuration.protocolVersion : null, []],
       credentials: this.fb.group(
         {
           type: [configuration && configuration.credentials ? configuration.credentials.type : null, [Validators.required]],

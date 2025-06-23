@@ -257,9 +257,7 @@ public class SimpleLwM2MDevice extends BaseInstanceEnabler implements Destroyabl
     }
 
     private int getBatteryStatus() {
-        int status = RANDOM.nextInt(7);
-        log.error("getBatteryStatus:  [{}]", status);
-        return status;
+        return RANDOM.nextInt(7);
     }
 
     private long getMemoryTotal() {

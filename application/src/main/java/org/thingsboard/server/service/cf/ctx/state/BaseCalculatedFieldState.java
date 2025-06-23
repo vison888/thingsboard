@@ -35,15 +35,13 @@ public abstract class BaseCalculatedFieldState implements CalculatedFieldState {
     protected Map<String, ArgumentEntry> arguments;
     protected boolean sizeExceedsLimit;
 
-    protected long latestTimestamp = -1;
-
     public BaseCalculatedFieldState(List<String> requiredArguments) {
         this.requiredArguments = requiredArguments;
         this.arguments = new HashMap<>();
     }
 
     public BaseCalculatedFieldState() {
-        this(new ArrayList<>(), new HashMap<>(), false, -1);
+        this(new ArrayList<>(), new HashMap<>(), false);
     }
 
     @Override
@@ -61,21 +59,14 @@ public abstract class BaseCalculatedFieldState implements CalculatedFieldState {
             checkArgumentSize(key, newEntry, ctx);
 
             ArgumentEntry existingEntry = arguments.get(key);
-            boolean entryUpdated;
 
             if (existingEntry == null || newEntry.isForceResetPrevious()) {
                 validateNewEntry(newEntry);
                 arguments.put(key, newEntry);
-                entryUpdated = true;
-            } else {
-                entryUpdated = existingEntry.updateEntry(newEntry);
-            }
-
-            if (entryUpdated) {
                 stateUpdated = true;
-                updateLastUpdateTimestamp(newEntry);
+            } else {
+                stateUpdated = existingEntry.updateEntry(newEntry);
             }
-
         }
 
         return stateUpdated;
@@ -108,16 +99,5 @@ public abstract class BaseCalculatedFieldState implements CalculatedFieldState {
     }
 
     protected abstract void validateNewEntry(ArgumentEntry newEntry);
-
-    private void updateLastUpdateTimestamp(ArgumentEntry entry) {
-        long newTs = this.latestTimestamp;
-        if (entry instanceof SingleValueArgumentEntry singleValueArgumentEntry) {
-            newTs = singleValueArgumentEntry.getTs();
-        } else if (entry instanceof TsRollingArgumentEntry tsRollingArgumentEntry) {
-            Map.Entry<Long, Double> lastEntry = tsRollingArgumentEntry.getTsRecords().lastEntry();
-            newTs = (lastEntry != null) ? lastEntry.getKey() : System.currentTimeMillis();
-        }
-        this.latestTimestamp = Math.max(this.latestTimestamp, newTs);
-    }
 
 }

@@ -28,9 +28,7 @@ import org.thingsboard.server.common.stats.StatsFactory;
 import org.thingsboard.server.dao.entity.EntityService;
 import org.thingsboard.server.dao.util.AbstractBufferedRateExecutor;
 import org.thingsboard.server.dao.util.AsyncTaskContext;
-import org.thingsboard.server.dao.util.BufferedRateExecutorType;
 import org.thingsboard.server.dao.util.NoSqlAnyDao;
-import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 
 /**
  * Created by ashvayka on 24.10.18.
@@ -39,6 +37,8 @@ import org.thingsboard.server.queue.discovery.TbServiceInfoProvider;
 @Slf4j
 @NoSqlAnyDao
 public class CassandraBufferedRateWriteExecutor extends AbstractBufferedRateExecutor<CassandraStatementTask, TbResultSetFuture, TbResultSet> {
+
+    static final String BUFFER_NAME = "Write";
 
     public CassandraBufferedRateWriteExecutor(
             @Value("${cassandra.query.buffer_size}") int queueLimit,
@@ -51,10 +51,9 @@ public class CassandraBufferedRateWriteExecutor extends AbstractBufferedRateExec
             @Value("${cassandra.query.print_queries_freq:0}") int printQueriesFreq,
             @Autowired StatsFactory statsFactory,
             @Autowired EntityService entityService,
-            @Autowired RateLimitService rateLimitService,
-            @Autowired(required = false) TbServiceInfoProvider serviceInfoProvider) {
-        super(queueLimit, concurrencyLimit, maxWaitTime, dispatcherThreads, callbackThreads, pollMs, printQueriesFreq,
-                BufferedRateExecutorType.WRITE, serviceInfoProvider, rateLimitService, statsFactory, entityService, printTenantNames);
+            @Autowired RateLimitService rateLimitService) {
+        super(queueLimit, concurrencyLimit, maxWaitTime, dispatcherThreads, callbackThreads, pollMs, printQueriesFreq, statsFactory,
+                entityService, rateLimitService, printTenantNames);
     }
 
     @Scheduled(fixedDelayString = "${cassandra.query.rate_limit_print_interval_ms}")
@@ -66,6 +65,11 @@ public class CassandraBufferedRateWriteExecutor extends AbstractBufferedRateExec
     @PreDestroy
     public void stop() {
         super.stop();
+    }
+
+    @Override
+    public String getBufferName() {
+        return BUFFER_NAME;
     }
 
     @Override

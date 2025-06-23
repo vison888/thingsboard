@@ -46,8 +46,6 @@ import java.util.stream.Collectors;
 public class MonitoringReporter {
 
     private final NotificationService notificationService;
-    private final TbClient tbClient;
-    private final MonitoringEntityService entityService;
 
     private final Map<String, Latency> latencies = new ConcurrentHashMap<>();
     private final Map<Object, AtomicInteger> failuresCounters = new ConcurrentHashMap<>();
@@ -64,7 +62,7 @@ public class MonitoringReporter {
     @Value("${monitoring.latency.reporting_asset_id}")
     private String reportingAssetId;
 
-    public void reportLatencies() {
+    public void reportLatencies(TbClient tbClient) {
         if (latencies.isEmpty()) {
             return;
         }
@@ -83,7 +81,15 @@ public class MonitoringReporter {
 
         try {
             if (StringUtils.isBlank(reportingAssetId)) {
-                Asset monitoringAsset = entityService.getOrCreateMonitoringAsset();
+                String assetName = "[Monitoring] Latencies";
+                Asset monitoringAsset = tbClient.findAsset(assetName).orElseGet(() -> {
+                    Asset asset = new Asset();
+                    asset.setType("Monitoring");
+                    asset.setName(assetName);
+                    asset = tbClient.saveAsset(asset);
+                    log.info("Created monitoring asset {}", asset.getId());
+                    return asset;
+                });
                 reportingAssetId = monitoringAsset.getId().toString();
             }
 
@@ -107,7 +113,7 @@ public class MonitoringReporter {
 
     public void serviceFailure(Object serviceKey, Throwable error) {
         if (log.isDebugEnabled()) {
-            log.error("[{}] Error occurred", serviceKey, error);
+            log.error("Error occurred", error);
         }
         int failuresCount = failuresCounters.computeIfAbsent(serviceKey, k -> new AtomicInteger()).incrementAndGet();
         ServiceFailureNotification notification = new ServiceFailureNotification(serviceKey, error, failuresCount);

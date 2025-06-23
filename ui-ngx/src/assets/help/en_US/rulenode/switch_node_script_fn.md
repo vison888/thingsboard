@@ -92,4 +92,10 @@ return [];
 ```
 
 <br>
+
+You can see real life example, how to use this node in this tutorial:
+
+- [Data function based on telemetry from 2 devices{:target="_blank"}](${siteBaseUrl}/docs${docPlatformPrefix}/user-guide/rule-engine-2-0/tutorials/function-based-on-telemetry-from-two-devices#delta-temperature-rule-chain)
+
+<br>
 <br>

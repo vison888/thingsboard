@@ -19,11 +19,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 import org.thingsboard.server.common.data.query.EntityData;
 import org.thingsboard.server.common.data.query.EntityKeyType;
+import org.thingsboard.server.common.data.query.TsValue;
 
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Data
@@ -33,16 +31,14 @@ public class EntityDataUpdate {
     @JsonIgnoreProperties(ignoreUnknown = true)
     private List<EntityData> update;
 
-    public Map<String, String> getLatest(UUID entityId) {
-        if (update == null || update.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        Map<String, String> result = new HashMap<>();
-        update.stream()
+    public String getLatest(UUID entityId, String key) {
+        if (update == null) return null;
+
+        return update.stream()
                 .filter(entityData -> entityData.getEntityId().getId().equals(entityId)).findFirst()
                 .map(EntityData::getLatest).map(latest -> latest.get(EntityKeyType.TIME_SERIES))
-                .ifPresent(latest -> latest.forEach((key, tsValue) -> result.put(key, tsValue.getValue())));
-        return result;
+                .map(latest -> latest.get(key)).map(TsValue::getValue)
+                .orElse(null);
     }
 
 }

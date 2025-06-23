@@ -29,8 +29,9 @@ public interface NotificationRuleTrigger extends Serializable {
 
     EntityId getOriginatorEntityId();
 
-    default DeduplicationStrategy getDeduplicationStrategy() {
-        return DeduplicationStrategy.NONE;
+
+    default boolean deduplicate() {
+        return false;
     }
 
     default String getDeduplicationKey() {
@@ -40,12 +41,6 @@ public interface NotificationRuleTrigger extends Serializable {
 
     default long getDefaultDeduplicationDuration() {
         return 0;
-    }
-
-    enum DeduplicationStrategy {
-        NONE,
-        ALL,
-        ONLY_MATCHING
     }
 
 }

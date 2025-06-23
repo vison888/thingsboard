@@ -21,7 +21,7 @@ import org.thingsboard.server.common.data.ObjectType;
 public interface EdqsObject {
 
     @JsonIgnore
-    String stringKey();
+    String key();
 
     @JsonIgnore
     Long version();

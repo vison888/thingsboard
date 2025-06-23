@@ -18,7 +18,6 @@ package org.thingsboard.server.service.sync.ie.importing.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.thingsboard.server.common.data.Dashboard;
 import org.thingsboard.server.common.data.EntityType;
 import org.thingsboard.server.common.data.User;
 import org.thingsboard.server.common.data.audit.ActionType;
@@ -28,7 +27,6 @@ import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.rule.RuleChain;
 import org.thingsboard.server.common.data.rule.RuleChainMetaData;
 import org.thingsboard.server.common.data.rule.RuleNode;
-import org.thingsboard.server.common.data.sync.ie.EntityExportData;
 import org.thingsboard.server.common.data.sync.ie.RuleChainExportData;
 import org.thingsboard.server.dao.rule.RuleChainService;
 import org.thingsboard.server.dao.rule.RuleNodeDao;
@@ -105,7 +103,7 @@ public class RuleChainImportService extends BaseEntityImportService<RuleChainId,
     }
 
     @Override
-    protected RuleChain saveOrUpdate(EntitiesImportCtx ctx, RuleChain ruleChain, RuleChainExportData exportData, IdProvider idProvider, CompareResult compareResult) {
+    protected RuleChain saveOrUpdate(EntitiesImportCtx ctx, RuleChain ruleChain, RuleChainExportData exportData, IdProvider idProvider) {
         ruleChain = ruleChainService.saveRuleChain(ruleChain);
         if (ctx.isFinalImportAttempt() || ctx.getCurrentImportResult().isUpdatedAllExternalIds()) {
             exportData.getMetaData().setRuleChainId(ruleChain.getId());
@@ -117,15 +115,15 @@ public class RuleChainImportService extends BaseEntityImportService<RuleChainId,
     }
 
     @Override
-    protected boolean isUpdateNeeded(EntitiesImportCtx ctx, RuleChainExportData exportData, RuleChain prepared, RuleChain existing) {
-        boolean updateNeeded = super.isUpdateNeeded(ctx, exportData, prepared, existing);
-        if (!updateNeeded) {
+    protected boolean compare(EntitiesImportCtx ctx, RuleChainExportData exportData, RuleChain prepared, RuleChain existing) {
+        boolean different = super.compare(ctx, exportData, prepared, existing);
+        if (!different) {
             RuleChainMetaData newMD = exportData.getMetaData();
             RuleChainMetaData existingMD = ruleChainService.loadRuleChainMetaData(ctx.getTenantId(), prepared.getId());
             existingMD.setRuleChainId(null);
-            updateNeeded = !newMD.equals(existingMD);
+            different = !newMD.equals(existingMD);
         }
-        return updateNeeded;
+        return different;
     }
 
     @Override

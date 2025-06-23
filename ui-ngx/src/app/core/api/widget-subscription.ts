@@ -23,15 +23,13 @@ import {
   WidgetSubscriptionOptions
 } from '@core/api/widget-api.models';
 import {
-  DataKey,
-  DataKeySettingsWithComparison,
+  DataKey, DataKeySettingsWithComparison,
   DataSet,
   DataSetHolder,
   Datasource,
   DatasourceData,
   datasourcesHasAggregation,
-  DatasourceType,
-  isDataKeySettingsWithComparison,
+  DatasourceType, isDataKeySettingsWithComparison,
   LegendConfig,
   LegendData,
   LegendKey,
@@ -64,8 +62,7 @@ import {
   flatFormattedData,
   formattedDataFormDatasourceData,
   isDefinedAndNotNull,
-  isEqual,
-  isUndefined,
+  isEqual, isUndefined,
   parseHttpErrorMessage
 } from '@core/utils';
 import { EntityId } from '@app/shared/models/id/entity-id';
@@ -87,8 +84,6 @@ import { AlarmDataListener } from '@core/api/alarm-data.service';
 import { RpcStatus } from '@shared/models/rpc.models';
 import { EventEmitter } from '@angular/core';
 import { NOT_SUPPORTED } from '@shared/models/telemetry/telemetry.models';
-import { isNotEmptyTbUnits, TbUnit } from '@shared/models/unit.models';
-import { ValueFormatProcessor } from '@shared/models/widget-settings.models';
 
 const moment = moment_;
 
@@ -194,7 +189,7 @@ export class WidgetSubscription implements IWidgetSubscription {
   stateData: boolean;
   datasourcesOptional: boolean;
   decimals: number;
-  units: TbUnit;
+  units: string;
   comparisonEnabled: boolean;
   timeForComparison: ComparisonDuration;
   comparisonCustomIntervalValue: number;
@@ -624,7 +619,7 @@ export class WidgetSubscription implements IWidgetSubscription {
                 if (additionalInfoJson && additionalInfoJson.description) {
                   entityDescription = additionalInfoJson.description;
                 }
-              } catch (e) {/**/}
+              } catch (e) {}
             }
           }
         }
@@ -1417,13 +1412,9 @@ export class WidgetSubscription implements IWidgetSubscription {
               this.data.push(datasourceData);
               this.hiddenData.push({data: []});
               if (this.displayLegend) {
-                const decimals = isDefinedAndNotNull(dataKey.decimals) ? dataKey.decimals : this.decimals;
-                const units = isNotEmptyTbUnits(dataKey.units) ? dataKey.units : this.units;
-                const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.unitService, {decimals, units})
                 const legendKey: LegendKey = {
                   dataKey,
-                  dataIndex: dataKeyIndex,
-                  valueFormat
+                  dataIndex: dataKeyIndex
                 };
                 this.legendData.keys.push(legendKey);
                 const legendKeyData: LegendKeyData = {
@@ -1653,22 +1644,24 @@ export class WidgetSubscription implements IWidgetSubscription {
   }
 
   private updateLegend(dataIndex: number, data: DataSet, detectChanges: boolean) {
-    const valueFormat = this.legendData.keys.find(key => key.dataIndex === dataIndex).valueFormat;
+    const dataKey = this.legendData.keys.find(key => key.dataIndex === dataIndex).dataKey;
+    const decimals = isDefinedAndNotNull(dataKey.decimals) ? dataKey.decimals : this.decimals;
+    const units = dataKey.units && dataKey.units.length ? dataKey.units : this.units;
     const legendKeyData = this.legendData.data[dataIndex];
     if (this.legendConfig.showMin) {
-      legendKeyData.min = valueFormat.format(calculateMin(data));
+      legendKeyData.min = this.ctx.widgetUtils.formatValue(calculateMin(data), decimals, units);
     }
     if (this.legendConfig.showMax) {
-      legendKeyData.max = valueFormat.format(calculateMax(data));
+      legendKeyData.max = this.ctx.widgetUtils.formatValue(calculateMax(data), decimals, units);
     }
     if (this.legendConfig.showAvg) {
-      legendKeyData.avg = valueFormat.format(calculateAvg(data));
+      legendKeyData.avg = this.ctx.widgetUtils.formatValue(calculateAvg(data), decimals, units);
     }
     if (this.legendConfig.showTotal) {
-      legendKeyData.total = valueFormat.format(calculateTotal(data));
+      legendKeyData.total = this.ctx.widgetUtils.formatValue(calculateTotal(data), decimals, units);
     }
     if (this.legendConfig.showLatest) {
-      legendKeyData.latest = valueFormat.format(calculateLatest(data));
+      legendKeyData.latest = this.ctx.widgetUtils.formatValue(calculateLatest(data), decimals, units);
     }
     this.callbacks.legendDataUpdated(this, detectChanges !== false);
   }

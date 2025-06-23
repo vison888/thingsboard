@@ -49,6 +49,7 @@ import {
   hashCode,
   isDefined,
   isDefinedAndNotNull,
+  isNumber,
   isObject,
   isUndefined
 } from '@core/utils';
@@ -84,8 +85,6 @@ import {
   getColumnSelectionAvailability,
   getRowStyleInfo,
   getTableCellButtonActions,
-  isValidPageStepCount,
-  isValidPageStepIncrement,
   noDataMessage,
   prepareTableCellButtonActions,
   RowStyleInfo,
@@ -105,7 +104,7 @@ import {
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FormBuilder } from '@angular/forms';
 import { DEFAULT_OVERLAY_POSITIONS } from '@shared/models/overlay.models';
-import { DateFormatSettings, ValueFormatProcessor } from '@shared/models/widget-settings.models';
+import { DateFormatSettings } from '@shared/models/widget-settings.models';
 
 export interface TimeseriesTableWidgetSettings extends TableWidgetSettings {
   showTimestamp: boolean;
@@ -353,10 +352,10 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
     this.rowStylesInfo = getRowStyleInfo(this.ctx, this.settings, 'rowData, ctx');
 
     const pageSize = this.settings.defaultPageSize;
-    let pageStepIncrement = isValidPageStepIncrement(this.settings.pageStepIncrement) ? this.settings.pageStepIncrement : null;
-    let pageStepCount = isValidPageStepCount(this.settings.pageStepCount) ? this.settings.pageStepCount : null;
+    let pageStepIncrement = this.settings.pageStepIncrement;
+    let pageStepCount = this.settings.pageStepCount;
 
-    if (Number.isInteger(pageSize) && pageSize > 0) {
+    if (isDefined(pageSize) && isNumber(pageSize) && pageSize > 0) {
       this.defaultPageSize = pageSize;
     }
 
@@ -540,12 +539,10 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
       const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, rowData, ctx');
       const columnDefaultVisibility = getColumnDefaultVisibility(keySettings, this.ctx);
       const columnSelectionAvailability = getColumnSelectionAvailability(keySettings);
-      const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
-      const units = dataKey.units || this.ctx.widgetConfig.units;
-      const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
       const contentInfo: CellContentInfo = {
         contentFunction: contentFunctionInfo,
-        valueFormat
+        units: dataKey.units,
+        decimals: dataKey.decimals
       };
       header.push({
         index: index + 1,
@@ -568,12 +565,10 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
         const contentFunctionInfo = getCellContentFunctionInfo(this.ctx, keySettings, 'value, rowData, ctx');
         const columnDefaultVisibility = getColumnDefaultVisibility(keySettings, this.ctx);
         const columnSelectionAvailability = getColumnSelectionAvailability(keySettings);
-        const decimals = (dataKey.decimals || dataKey.decimals === 0) ? dataKey.decimals : this.ctx.widgetConfig.decimals;
-        const units = dataKey.units || this.ctx.widgetConfig.units;
-        const valueFormat = ValueFormatProcessor.fromSettings(this.ctx.$injector, {units, decimals, showZeroDecimals: true});
         const contentInfo: CellContentInfo = {
           contentFunction: contentFunctionInfo,
-          valueFormat
+          units: dataKey.units,
+          decimals: dataKey.decimals
         };
         header.push({
           index: index + 1,
@@ -687,7 +682,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
 
   public rowStyle(source: TimeseriesTableSource, row: TimeseriesRow, index: number): Observable<any> {
     let style$: Observable<any>;
-    const res = this.rowStyleCache[index];
+    let res = this.rowStyleCache[index];
     if (!res) {
       style$ = this.rowStylesInfo.pipe(
         map(styleInfo => {
@@ -730,7 +725,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                    index: number, row: TimeseriesRow, value: any, rowIndex: number): Observable<any> {
     let style$: Observable<any>;
     const cacheIndex = rowIndex * (source.header.length + 1) + index;
-    const res = this.cellStyleCache[cacheIndex];
+    let res = this.cellStyleCache[cacheIndex];
     if (!res) {
       if (index > 0) {
         style$ = header.styleInfo.pipe(
@@ -777,7 +772,7 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                      index: number, row: TimeseriesRow, value: any, rowIndex: number): Observable<SafeHtml> {
     let content$: Observable<SafeHtml>;
     const cacheIndex = rowIndex * (source.header.length + 1) + index ;
-    const res = this.cellContentCache[cacheIndex];
+    let res = this.cellContentCache[cacheIndex];
     if (isUndefined(res)) {
       if (index === 0) {
         content$ = of(row.formattedTs);
@@ -797,7 +792,9 @@ export class TimeseriesTableWidgetComponent extends PageComponent implements OnI
                 content = '' + value;
               }
             } else {
-              content = header.contentInfo.valueFormat.format(value);
+              const decimals = (header.contentInfo.decimals || header.contentInfo.decimals === 0) ? header.contentInfo.decimals : this.ctx.widgetConfig.decimals;
+              const units = header.contentInfo.units || this.ctx.widgetConfig.units;
+              content = this.ctx.utils.formatValue(value, decimals, units, true);
             }
             if (isDefined(content)) {
               content = this.utils.customTranslation(content, content);

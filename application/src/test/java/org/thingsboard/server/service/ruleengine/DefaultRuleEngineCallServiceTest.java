@@ -144,7 +144,7 @@ public class DefaultRuleEngineCallServiceTest {
 
     private TransportProtos.RestApiCallResponseMsgProto getResponse(UUID requestId, TbMsg msg) {
         return TransportProtos.RestApiCallResponseMsgProto.newBuilder()
-                .setResponseProto(TbMsg.toProto(msg))
+                .setResponse(TbMsg.toByteString(msg))
                 .setRequestIdMSB(requestId.getMostSignificantBits())
                 .setRequestIdLSB(requestId.getLeastSignificantBits())
                 .build();

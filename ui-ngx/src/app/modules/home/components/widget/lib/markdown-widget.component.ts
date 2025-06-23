@@ -90,8 +90,8 @@ export class MarkdownWidgetComponent extends PageComponent implements OnInit {
       this.markdownClass = 'markdown-widget-' + hashCode(cssString);
       cssParser.cssPreviewNamespace = this.markdownClass;
       cssParser.testMode = false;
-      const cssObjects = cssParser.applyNamespacing(cssString);
-      cssString = cssParser.getCSSForEditor(cssObjects);
+      cssString = cssParser.applyNamespacing(cssString);
+      cssString = cssParser.getCSSForEditor(cssString);
       this.additionalStyles = [cssString];
     }
     if (isDefinedAndNotNull(this.settings.applyDefaultMarkdownStyle)) {

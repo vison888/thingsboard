@@ -18,7 +18,6 @@ package org.thingsboard.server.service.edqs;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
-import org.thingsboard.server.queue.discovery.TopicService;
 import org.thingsboard.server.queue.edqs.EdqsConfig;
 import org.thingsboard.server.queue.kafka.TbKafkaAdmin;
 import org.thingsboard.server.queue.kafka.TbKafkaSettings;
@@ -33,11 +32,11 @@ public class KafkaEdqsSyncService extends EdqsSyncService {
 
     private final boolean syncNeeded;
 
-    public KafkaEdqsSyncService(TbKafkaSettings kafkaSettings, TopicService topicService, EdqsConfig edqsConfig) {
+    public KafkaEdqsSyncService(TbKafkaSettings kafkaSettings, EdqsConfig edqsConfig) {
         TbKafkaAdmin kafkaAdmin = new TbKafkaAdmin(kafkaSettings, Collections.emptyMap());
         this.syncNeeded = kafkaAdmin.areAllTopicsEmpty(IntStream.range(0, edqsConfig.getPartitions())
                 .mapToObj(partition -> TopicPartitionInfo.builder()
-                        .topic(topicService.buildTopicName(edqsConfig.getEventsTopic()))
+                        .topic(edqsConfig.getEventsTopic())
                         .partition(partition)
                         .build().getFullTopicName())
                 .collect(Collectors.toSet()));

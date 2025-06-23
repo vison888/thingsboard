@@ -40,6 +40,8 @@ import {
 } from '@shared/models/widget.models';
 import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
 import { AggregationType } from '@shared/models/time/time.models';
+import { TranslateService } from '@ngx-translate/core';
+import { TruncatePipe } from '@shared/pipe/truncate.pipe';
 import {
   DataKeyConfigDialogComponent,
   DataKeyConfigDialogData
@@ -53,7 +55,6 @@ import {
 import { WidgetConfigCallbacks } from '@home/components/widget/config/widget-config.component.models';
 import { FormProperty } from '@shared/models/dynamic-form.models';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { getSourceTbUnitSymbol, TbUnit } from '@shared/models/unit.models';
 
 @Component({
   selector: 'tb-aggregated-data-key-row',
@@ -118,11 +119,17 @@ export class AggregatedDataKeyRowComponent implements ControlValueAccessor, OnIn
     return this.widgetConfigComponent.modelValue?.latestDataKeySettingsDirective;
   }
 
+  get isEntityDatasource(): boolean {
+    return [DatasourceType.device, DatasourceType.entity].includes(this.datasourceType);
+  }
+
   private propagateChange = (_val: any) => {};
 
   constructor(private fb: UntypedFormBuilder,
               private dialog: MatDialog,
               private cd: ChangeDetectorRef,
+              public translate: TranslateService,
+              public truncate: TruncatePipe,
               private widgetConfigComponent: WidgetConfigComponent,
               private destroyRef: DestroyRef) {
   }
@@ -215,8 +222,7 @@ export class AggregatedDataKeyRowComponent implements ControlValueAccessor, OnIn
           callbacks: this.callbacks,
           hideDataKeyName: true,
           hideDataKeyLabel: true,
-          hideDataKeyColor: true,
-          supportsUnitConversion: true
+          hideDataKeyColor: true
         }
       }).afterClosed().subscribe((updatedDataKey) => {
       if (updatedDataKey) {
@@ -247,8 +253,8 @@ export class AggregatedDataKeyRowComponent implements ControlValueAccessor, OnIn
   }
 
   private _valuePreviewFn(): string {
-    const units: TbUnit = this.keyRowFormGroup.get('units').value;
+    const units: string = this.keyRowFormGroup.get('units').value;
     const decimals: number = this.keyRowFormGroup.get('decimals').value;
-    return formatValue(22, decimals, getSourceTbUnitSymbol(units), true);
+    return formatValue(22, decimals, units, true);
   }
 }

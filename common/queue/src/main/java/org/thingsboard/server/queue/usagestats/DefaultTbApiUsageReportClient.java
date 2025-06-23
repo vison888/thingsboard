@@ -131,7 +131,7 @@ public class DefaultTbApiUsageReportClient implements TbApiUsageReportClient {
         report.forEach((parent, statsMsg) -> {
             try {
                 TopicPartitionInfo tpi = partitionService.resolve(ServiceType.TB_CORE, parent.getTenantId(), parent.getId())
-                        .withTopic(msgProducer.getDefaultTopic());
+                        .newByTopic(msgProducer.getDefaultTopic());
                 reportStatsPerTpi.computeIfAbsent(tpi, k -> new ArrayList<>()).add(statsMsg.build());
             } catch (TenantNotFoundException e) {
                 log.debug("Couldn't report usage stats for non-existing tenant: {}", e.getTenantId());

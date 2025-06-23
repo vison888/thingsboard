@@ -17,7 +17,6 @@ package org.thingsboard.server.common.data;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
-import org.thingsboard.server.common.data.trendz.TrendzSettings;
 
 import java.util.List;
 
@@ -38,5 +37,4 @@ public class SystemParams {
     String calculatedFieldDebugPerTenantLimitsConfiguration;
     long maxArgumentsPerCF;
     long maxDataPointsPerRollingArg;
-    TrendzSettings trendzSettings;
 }

@@ -27,6 +27,9 @@ import org.eclipse.leshan.core.response.WriteResponse;
 
 import javax.security.auth.Destroyable;
 import java.sql.Time;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -184,7 +187,8 @@ public class LwM2mBinaryAppDataContainer extends BaseInstanceEnabler implements 
     }
 
     private Time getTimestamp() {
-        setTimestamp();
+        LocalTime localTime = LocalTime.ofInstant(Instant.now(), ZoneId.systemDefault());
+        this.timestamp = Time.valueOf(localTime);
         return this.timestamp;
     }
 

@@ -28,7 +28,6 @@ import org.thingsboard.server.common.data.cf.configuration.ArgumentType;
 import org.thingsboard.server.common.data.cf.configuration.CalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.cf.configuration.Output;
 import org.thingsboard.server.common.data.cf.configuration.ReferencedEntityKey;
-import org.thingsboard.server.common.data.cf.configuration.SimpleCalculatedFieldConfiguration;
 import org.thingsboard.server.common.data.id.CalculatedFieldId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
@@ -62,7 +61,6 @@ public class CalculatedFieldCtx {
     private final List<String> argNames;
     private Output output;
     private String expression;
-    private boolean useLatestTs;
     private TbelInvokeService tbelInvokeService;
     private CalculatedFieldScriptEngine calculatedFieldScriptEngine;
     private ThreadLocal<Expression> customExpression;
@@ -96,7 +94,6 @@ public class CalculatedFieldCtx {
         this.argNames = new ArrayList<>(arguments.keySet());
         this.output = configuration.getOutput();
         this.expression = configuration.getExpression();
-        this.useLatestTs = CalculatedFieldType.SIMPLE.equals(calculatedField.getType()) && ((SimpleCalculatedFieldConfiguration) configuration).isUseLatestTs();
         this.tbelInvokeService = tbelInvokeService;
 
         this.maxDataPointsPerRollingArg = apiLimitService.getLimit(tenantId, DefaultTenantProfileConfiguration::getMaxDataPointsPerRollingArg);
@@ -181,37 +178,26 @@ public class CalculatedFieldCtx {
     }
 
     private boolean matchesAttributes(Map<ReferencedEntityKey, String> argMap, List<AttributeKvEntry> values, AttributeScope scope) {
-        if (argMap.isEmpty() || values.isEmpty()) {
-            return false;
-        }
-
         for (AttributeKvEntry attrKv : values) {
-            if (argMap.containsKey(new ReferencedEntityKey(attrKv.getKey(), ArgumentType.ATTRIBUTE, scope))) {
+            ReferencedEntityKey attrKey = new ReferencedEntityKey(attrKv.getKey(), ArgumentType.ATTRIBUTE, scope);
+            if (argMap.containsKey(attrKey)) {
                 return true;
             }
         }
-
         return false;
     }
 
     private boolean matchesTimeSeries(Map<ReferencedEntityKey, String> argMap, List<TsKvEntry> values) {
-        if (argMap.isEmpty() || values.isEmpty()) {
-            return false;
-        }
-
         for (TsKvEntry tsKv : values) {
-
             ReferencedEntityKey latestKey = new ReferencedEntityKey(tsKv.getKey(), ArgumentType.TS_LATEST, null);
             if (argMap.containsKey(latestKey)) {
                 return true;
             }
-
             ReferencedEntityKey rollingKey = new ReferencedEntityKey(tsKv.getKey(), ArgumentType.TS_ROLLING, null);
             if (argMap.containsKey(rollingKey)) {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -224,38 +210,26 @@ public class CalculatedFieldCtx {
     }
 
     private boolean matchesAttributesKeys(Map<ReferencedEntityKey, String> argMap, List<String> keys, AttributeScope scope) {
-        if (argMap.isEmpty() || keys.isEmpty()) {
-            return false;
-        }
-
         for (String key : keys) {
             ReferencedEntityKey attrKey = new ReferencedEntityKey(key, ArgumentType.ATTRIBUTE, scope);
             if (argMap.containsKey(attrKey)) {
                 return true;
             }
         }
-
         return false;
     }
 
     private boolean matchesTimeSeriesKeys(Map<ReferencedEntityKey, String> argMap, List<String> keys) {
-        if (argMap.isEmpty() || keys.isEmpty()) {
-            return false;
-        }
-
         for (String key : keys) {
-
             ReferencedEntityKey latestKey = new ReferencedEntityKey(key, ArgumentType.TS_LATEST, null);
             if (argMap.containsKey(latestKey)) {
                 return true;
             }
-
             ReferencedEntityKey rollingKey = new ReferencedEntityKey(key, ArgumentType.TS_ROLLING, null);
             if (argMap.containsKey(rollingKey)) {
                 return true;
             }
         }
-
         return false;
     }
 

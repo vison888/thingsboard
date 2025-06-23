@@ -22,13 +22,11 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.thingsboard.server.common.data.ObjectType;
 import org.thingsboard.server.common.data.edqs.EdqsEventType;
-import org.thingsboard.server.common.data.edqs.EdqsObject;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.msg.queue.ServiceType;
 import org.thingsboard.server.common.msg.queue.TopicPartitionInfo;
 import org.thingsboard.server.edqs.processor.EdqsProcessor;
 import org.thingsboard.server.edqs.processor.EdqsProducer;
-import org.thingsboard.server.edqs.util.EdqsMapper;
 import org.thingsboard.server.edqs.util.VersionsStore;
 import org.thingsboard.server.gen.transport.TransportProtos.EdqsEventMsg;
 import org.thingsboard.server.gen.transport.TransportProtos.ToEdqsMsg;
@@ -36,18 +34,15 @@ import org.thingsboard.server.queue.common.TbProtoQueueMsg;
 import org.thingsboard.server.queue.common.consumer.PartitionedQueueConsumerManager;
 import org.thingsboard.server.queue.common.consumer.QueueConsumerManager;
 import org.thingsboard.server.queue.common.state.KafkaQueueStateService;
-import org.thingsboard.server.queue.discovery.DiscoveryService;
+import org.thingsboard.server.queue.common.state.QueueStateService;
 import org.thingsboard.server.queue.discovery.QueueKey;
-import org.thingsboard.server.queue.discovery.TopicService;
 import org.thingsboard.server.queue.edqs.EdqsConfig;
-import org.thingsboard.server.queue.edqs.EdqsExecutors;
 import org.thingsboard.server.queue.edqs.KafkaEdqsComponent;
 import org.thingsboard.server.queue.edqs.KafkaEdqsQueueFactory;
 import org.thingsboard.server.queue.kafka.TbKafkaAdmin;
 import org.thingsboard.server.queue.kafka.TbKafkaConsumerTemplate;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,34 +59,28 @@ public class KafkaEdqsStateService implements EdqsStateService {
     private final EdqsConfig config;
     private final EdqsPartitionService partitionService;
     private final KafkaEdqsQueueFactory queueFactory;
-    private final DiscoveryService discoveryService;
-    private final EdqsExecutors edqsExecutors;
-    private final EdqsMapper mapper;
-    private final TopicService topicService;
     @Autowired
     @Lazy
     private EdqsProcessor edqsProcessor;
 
     private PartitionedQueueConsumerManager<TbProtoQueueMsg<ToEdqsMsg>> stateConsumer;
-    private KafkaQueueStateService<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<ToEdqsMsg>> queueStateService;
+    private QueueStateService<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<ToEdqsMsg>> queueStateService;
     private QueueConsumerManager<TbProtoQueueMsg<ToEdqsMsg>> eventsToBackupConsumer;
     private EdqsProducer stateProducer;
-    private VersionsStore versionsStore;
 
+    private final VersionsStore versionsStore = new VersionsStore();
     private final AtomicInteger stateReadCount = new AtomicInteger();
     private final AtomicInteger eventsReadCount = new AtomicInteger();
-
-    private boolean ready = false;
+    private Boolean ready;
 
     @Override
-    public void init(PartitionedQueueConsumerManager<TbProtoQueueMsg<ToEdqsMsg>> eventConsumer, List<PartitionedQueueConsumerManager<?>> otherConsumers) {
-        versionsStore = new VersionsStore(config.getVersionsCacheTtl());
+    public void init(PartitionedQueueConsumerManager<TbProtoQueueMsg<ToEdqsMsg>> eventConsumer) {
         TbKafkaAdmin queueAdmin = queueFactory.getEdqsQueueAdmin();
         stateConsumer = PartitionedQueueConsumerManager.<TbProtoQueueMsg<ToEdqsMsg>>create()
                 .queueKey(new QueueKey(ServiceType.EDQS, config.getStateTopic()))
-                .topic(topicService.buildTopicName(config.getStateTopic()))
+                .topic(config.getStateTopic())
                 .pollInterval(config.getPollInterval())
-                .msgPackProcessor((msgs, consumer, consumerKey, config) -> {
+                .msgPackProcessor((msgs, consumer, config) -> {
                     for (TbProtoQueueMsg<ToEdqsMsg> queueMsg : msgs) {
                         try {
                             ToEdqsMsg msg = queueMsg.getValue();
@@ -107,9 +96,9 @@ public class KafkaEdqsStateService implements EdqsStateService {
                 })
                 .consumerCreator((config, tpi) -> queueFactory.createEdqsStateConsumer())
                 .queueAdmin(queueAdmin)
-                .consumerExecutor(edqsExecutors.getConsumersExecutor())
-                .taskExecutor(edqsExecutors.getConsumerTaskExecutor())
-                .scheduler(edqsExecutors.getScheduler())
+                .consumerExecutor(eventConsumer.getConsumerExecutor())
+                .taskExecutor(eventConsumer.getTaskExecutor())
+                .scheduler(eventConsumer.getScheduler())
                 .uncaughtErrorHandler(edqsProcessor.getErrorHandler())
                 .build();
 
@@ -128,25 +117,22 @@ public class KafkaEdqsStateService implements EdqsStateService {
 
                             if (msg.hasEventMsg()) {
                                 EdqsEventMsg eventMsg = msg.getEventMsg();
-                                ObjectType objectType = ObjectType.valueOf(eventMsg.getObjectType());
-                                EdqsObject object = mapper.deserialize(objectType, eventMsg.getData().toByteArray(), true);
-
+                                String key = eventMsg.getKey();
+                                int count = eventsReadCount.incrementAndGet();
+                                if (count % 100000 == 0) {
+                                    log.info("[events-to-backup] Processed {} msgs", count);
+                                }
                                 if (eventMsg.hasVersion()) {
-                                    if (!versionsStore.isNew(mapper.getKey(object), eventMsg.getVersion())) {
+                                    if (!versionsStore.isNew(key, eventMsg.getVersion())) {
                                         continue;
                                     }
                                 }
 
                                 TenantId tenantId = getTenantId(msg);
+                                ObjectType objectType = ObjectType.valueOf(eventMsg.getObjectType());
                                 EdqsEventType eventType = EdqsEventType.valueOf(eventMsg.getEventType());
-                                String key = object.stringKey();
                                 log.trace("[{}] Saving to backup [{}] [{}] [{}]", tenantId, objectType, eventType, key);
-                                stateProducer.send(tenantId, objectType, object.stringKey(), msg);
-
-                                int count = eventsReadCount.incrementAndGet();
-                                if (count % 100000 == 0) {
-                                    log.info("[events-to-backup] Processed {} msgs", count);
-                                }
+                                stateProducer.send(tenantId, objectType, key, msg);
                             }
                         } catch (Throwable t) {
                             log.error("Failed to process message: {}", queueMsg, t);
@@ -155,7 +141,7 @@ public class KafkaEdqsStateService implements EdqsStateService {
                     consumer.commit();
                 })
                 .consumerCreator(() -> eventsToBackupKafkaConsumer)
-                .consumerExecutor(edqsExecutors.getConsumersExecutor())
+                .consumerExecutor(eventConsumer.getConsumerExecutor())
                 .threadPrefix("edqs-events-to-backup")
                 .build();
 
@@ -167,7 +153,6 @@ public class KafkaEdqsStateService implements EdqsStateService {
         queueStateService = KafkaQueueStateService.<TbProtoQueueMsg<ToEdqsMsg>, TbProtoQueueMsg<ToEdqsMsg>>builder()
                 .eventConsumer(eventConsumer)
                 .stateConsumer(stateConsumer)
-                .otherConsumers(otherConsumers)
                 .eventsStartOffsetsProvider(() -> {
                     // taking start offsets for events topics from the events-to-backup consumer group,
                     // since eventConsumer doesn't use consumer group management and thus offset tracking
@@ -191,17 +176,14 @@ public class KafkaEdqsStateService implements EdqsStateService {
         if (queueStateService.getPartitions().isEmpty()) {
             Set<TopicPartitionInfo> allPartitions = IntStream.range(0, config.getPartitions())
                     .mapToObj(partition -> TopicPartitionInfo.builder()
-                            .topic(topicService.buildTopicName(config.getEventsTopic()))
+                            .topic(config.getEventsTopic())
                             .partition(partition)
                             .build())
                     .collect(Collectors.toSet());
             eventsToBackupConsumer.subscribe(allPartitions);
             eventsToBackupConsumer.launch();
         }
-        queueStateService.update(new QueueKey(ServiceType.EDQS), partitions, () -> {
-            ready = true;
-            discoveryService.setReady(true);
-        });
+        queueStateService.update(new QueueKey(ServiceType.EDQS), partitions);
     }
 
     @Override
@@ -211,7 +193,13 @@ public class KafkaEdqsStateService implements EdqsStateService {
 
     @Override
     public boolean isReady() {
-        return ready;
+        if (ready == null) {
+            Set<TopicPartitionInfo> partitionsInProgress = queueStateService.getPartitionsInProgress();
+            if (partitionsInProgress != null && partitionsInProgress.isEmpty()) {
+                ready = true; // once true - always true, not to change readiness status on each repartitioning
+            }
+        }
+        return ready != null && ready;
     }
 
     private TenantId getTenantId(ToEdqsMsg edqsMsg) {
@@ -224,7 +212,6 @@ public class KafkaEdqsStateService implements EdqsStateService {
         stateConsumer.awaitStop();
         eventsToBackupConsumer.stop();
         stateProducer.stop();
-        versionsStore.shutdown();
     }
 
 }

@@ -19,13 +19,11 @@ import {
   ComponentRef,
   EventEmitter,
   forwardRef,
-  HostBinding,
   Input,
   OnDestroy,
   Output,
   ViewChild,
-  ViewContainerRef,
-  ViewEncapsulation
+  ViewContainerRef
 } from '@angular/core';
 import {
   ControlValueAccessor,
@@ -54,15 +52,13 @@ import { RuleChainType } from '@shared/models/rule-chain.models';
     provide: NG_VALUE_ACCESSOR,
     useExisting: forwardRef(() => RuleNodeConfigComponent),
     multi: true
-  }],
-  encapsulation: ViewEncapsulation.None
+  }]
 })
 export class RuleNodeConfigComponent implements ControlValueAccessor, OnDestroy {
 
   @ViewChild('definedConfigContent', {read: ViewContainerRef, static: true}) definedConfigContainer: ViewContainerRef;
-  @ViewChild('jsonObjectEditComponent') jsonObjectEditComponent: JsonObjectEditComponent;
 
-  @HostBinding('style.display') readonly styleDisplay = 'block';
+  @ViewChild('jsonObjectEditComponent') jsonObjectEditComponent: JsonObjectEditComponent;
 
   private requiredValue: boolean;
   get required(): boolean {

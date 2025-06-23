@@ -210,7 +210,7 @@ public class RuleNodeActorMessageProcessor extends ComponentMsgProcessor<RuleNod
         TransportProtos.ToRuleEngineMsg toQueueMsg = TransportProtos.ToRuleEngineMsg.newBuilder()
                 .setTenantIdMSB(tenantId.getId().getMostSignificantBits())
                 .setTenantIdLSB(tenantId.getId().getLeastSignificantBits())
-                .setTbMsgProto(TbMsg.toProto(tbMsg))
+                .setTbMsg(TbMsg.toByteString(tbMsg))
                 .build();
         systemContext.getClusterService().pushMsgToRuleEngine(tpi, tbMsg.getId(), toQueueMsg, null);
         defaultCtx.ack(source);

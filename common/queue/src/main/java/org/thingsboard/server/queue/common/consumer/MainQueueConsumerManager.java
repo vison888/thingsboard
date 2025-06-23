@@ -25,6 +25,7 @@ import org.thingsboard.server.queue.TbQueueConsumer;
 import org.thingsboard.server.queue.TbQueueMsg;
 import org.thingsboard.server.queue.common.consumer.TbQueueConsumerManagerTask.UpdateConfigTask;
 import org.thingsboard.server.queue.common.consumer.TbQueueConsumerManagerTask.UpdatePartitionsTask;
+import org.thingsboard.server.queue.discovery.QueueKey;
 import org.thingsboard.server.queue.kafka.TbKafkaConsumerTemplate;
 
 import java.util.Collection;
@@ -49,7 +50,7 @@ import java.util.function.Function;
 public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfig> {
 
     @Getter
-    protected final Object queueKey;
+    protected final QueueKey queueKey;
     @Getter
     protected C config;
     protected final MsgPackProcessor<M, C> msgPackProcessor;
@@ -71,7 +72,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
     protected volatile boolean stopped;
 
     @Builder
-    public MainQueueConsumerManager(Object queueKey, C config,
+    public MainQueueConsumerManager(QueueKey queueKey, C config,
                                     MsgPackProcessor<M, C> msgPackProcessor,
                                     BiFunction<C, TopicPartitionInfo, TbQueueConsumer<M>> consumerCreator,
                                     ExecutorService consumerExecutor,
@@ -203,7 +204,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         log.info("[{}] Launching consumer", consumerTask.getKey());
         Future<?> consumerLoop = consumerExecutor.submit(() -> {
             ThingsBoardThreadFactory.updateCurrentThreadName(consumerTask.getKey().toString());
-            consumerLoop(consumerTask.getKey(), consumerTask.getConsumer());
+            consumerLoop(consumerTask.getConsumer());
             log.info("[{}] Consumer stopped", consumerTask.getKey());
 
             try {
@@ -218,7 +219,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         consumerTask.setTask(consumerLoop);
     }
 
-    private void consumerLoop(Object consumerKey, TbQueueConsumer<M> consumer) {
+    private void consumerLoop(TbQueueConsumer<M> consumer) {
         try {
             while (!stopped && !consumer.isStopped()) {
                 try {
@@ -226,7 +227,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
                     if (msgs.isEmpty()) {
                         continue;
                     }
-                    processMsgs(msgs, consumer, consumerKey, config);
+                    processMsgs(msgs, consumer, config);
                 } catch (Exception e) {
                     if (!consumer.isStopped()) {
                         log.warn("Failed to process messages from queue", e);
@@ -250,9 +251,9 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
         }
     }
 
-    protected void processMsgs(List<M> msgs, TbQueueConsumer<M> consumer, Object consumerKey, C config) throws Exception {
+    protected void processMsgs(List<M> msgs, TbQueueConsumer<M> consumer, C config) throws Exception {
         log.trace("Processing {} messages", msgs.size());
-        msgPackProcessor.process(msgs, consumer, consumerKey, config);
+        msgPackProcessor.process(msgs, consumer, config);
         log.trace("Processed {} messages", msgs.size());
     }
 
@@ -273,7 +274,7 @@ public class MainQueueConsumerManager<M extends TbQueueMsg, C extends QueueConfi
     }
 
     public interface MsgPackProcessor<M extends TbQueueMsg, C extends QueueConfig> {
-        void process(List<M> msgs, TbQueueConsumer<M> consumer, Object consumerKey, C config) throws Exception;
+        void process(List<M> msgs, TbQueueConsumer<M> consumer, C config) throws Exception;
     }
 
     public interface ConsumerWrapper<M extends TbQueueMsg> {

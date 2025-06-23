@@ -49,7 +49,7 @@ public class WidgetsBundleImportService extends BaseEntityImportService<WidgetsB
     }
 
     @Override
-    protected WidgetsBundle saveOrUpdate(EntitiesImportCtx ctx, WidgetsBundle widgetsBundle, WidgetsBundleExportData exportData, IdProvider idProvider, CompareResult compareResult) {
+    protected WidgetsBundle saveOrUpdate(EntitiesImportCtx ctx, WidgetsBundle widgetsBundle, WidgetsBundleExportData exportData, IdProvider idProvider) {
         if (CollectionsUtil.isNotEmpty(exportData.getWidgets())) {
             exportData.getWidgets().forEach(widgetTypeNode -> {
                 String bundleAlias = widgetTypeNode.remove("bundleAlias").asText();
@@ -75,8 +75,8 @@ public class WidgetsBundleImportService extends BaseEntityImportService<WidgetsB
     }
 
     @Override
-    protected CompareResult compare(EntitiesImportCtx ctx, WidgetsBundleExportData exportData, WidgetsBundle prepared, WidgetsBundle existing) {
-        return new CompareResult(true);
+    protected boolean compare(EntitiesImportCtx ctx, WidgetsBundleExportData exportData, WidgetsBundle prepared, WidgetsBundle existing) {
+        return true;
     }
 
     @Override

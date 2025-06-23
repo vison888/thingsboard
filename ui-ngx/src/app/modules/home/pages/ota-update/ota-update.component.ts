@@ -185,11 +185,9 @@ export class OtaUpdateComponent extends EntityComponent<OtaPackage> implements O
       }));
   }
 
-  prepareFormValue(formValue: OtaPackage & {generateChecksum?: boolean}): any {
+  prepareFormValue(formValue: any): any {
     if (formValue.isURL) {
       delete formValue.file;
-      delete formValue.checksumAlgorithm;
-      delete formValue.checksum;
     } else {
       delete formValue.url;
     }

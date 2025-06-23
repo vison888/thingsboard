@@ -92,14 +92,13 @@ public class TbCalculatedFieldsNode implements TbNode {
                 .customerId(msg.getCustomerId())
                 .entityId(msg.getOriginator())
                 .entries(tsKvEntryList)
-                .strategy(TimeseriesSaveRequest.Strategy.CF_ONLY)
                 .previousCalculatedFieldIds(msg.getPreviousCalculatedFieldIds())
                 .tbMsgId(msg.getId())
                 .tbMsgType(msg.getInternalType())
                 .callback(new TelemetryNodeCallback(ctx, msg))
                 .build();
 
-        ctx.getTelemetryService().saveTimeseries(timeseriesSaveRequest);
+        ctx.getCalculatedFieldQueueService().pushRequestToQueue(timeseriesSaveRequest, timeseriesSaveRequest.getCallback());
     }
 
     private void processPostAttributesRequest(TbContext ctx, TbMsg msg) {
@@ -115,13 +114,12 @@ public class TbCalculatedFieldsNode implements TbNode {
                 .entityId(msg.getOriginator())
                 .scope(AttributeScope.valueOf(msg.getMetaData().getValue(SCOPE)))
                 .entries(newAttributes)
-                .strategy(AttributesSaveRequest.Strategy.CF_ONLY)
                 .previousCalculatedFieldIds(msg.getPreviousCalculatedFieldIds())
                 .tbMsgId(msg.getId())
                 .tbMsgType(msg.getInternalType())
                 .callback(new TelemetryNodeCallback(ctx, msg))
                 .build();
-        ctx.getTelemetryService().saveAttributes(attributesSaveRequest);
+        ctx.getCalculatedFieldQueueService().pushRequestToQueue(attributesSaveRequest, attributesSaveRequest.getCallback());
     }
 
 }

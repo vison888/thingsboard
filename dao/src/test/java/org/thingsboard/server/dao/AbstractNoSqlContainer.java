@@ -41,7 +41,7 @@ public abstract class AbstractNoSqlContainer {
     );
 
     @ClassRule(order = 0)
-    public static final CassandraContainer cassandra = (CassandraContainer) new CassandraContainer("cassandra:5.0") {
+    public static final CassandraContainer cassandra = (CassandraContainer) new CassandraContainer("cassandra:4.1") {
         @Override
         protected void containerIsStarted(InspectContainerResponse containerInfo) {
             super.containerIsStarted(containerInfo);

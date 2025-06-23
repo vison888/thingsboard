@@ -17,8 +17,6 @@ package org.thingsboard.mqtt;
 
 public interface PendingOperation {
 
-    boolean isCancelled();
-
-    void onMaxRetransmissionAttemptsReached();
+    boolean isCanceled();
 
 }

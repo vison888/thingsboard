@@ -160,7 +160,7 @@ export const ZIP_TYPE: FileType = {
 };
 
 export const CSV_TYPE: FileType = {
-  mimeType: 'text/csv',
+  mimeType: 'attachament/csv',
   extension: 'csv'
 };
 

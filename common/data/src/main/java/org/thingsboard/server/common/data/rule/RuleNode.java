@@ -62,7 +62,9 @@ public class RuleNode extends BaseDataWithAdditionalInfo<RuleNodeId> implements 
     @Schema(description = "Version of rule node configuration. ", example = "0")
     private int configurationVersion;
     @Schema(description = "JSON with the rule node configuration. Structure depends on the rule node implementation.", implementation = JsonNode.class)
-    private JsonNode configuration;
+    private transient JsonNode configuration;
+    @JsonIgnore
+    private byte[] configurationBytes;
 
     private RuleNodeId externalId;
 
@@ -88,6 +90,14 @@ public class RuleNode extends BaseDataWithAdditionalInfo<RuleNodeId> implements 
     @Override
     public String getName() {
         return name;
+    }
+
+    public JsonNode getConfiguration() {
+        return BaseDataWithAdditionalInfo.getJson(() -> configuration, () -> configurationBytes);
+    }
+
+    public void setConfiguration(JsonNode data) {
+        setJson(data, json -> this.configuration = json, bytes -> this.configurationBytes = bytes);
     }
 
     @Schema(description = "JSON object with the Rule Node Id. " +

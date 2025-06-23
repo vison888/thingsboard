@@ -454,7 +454,7 @@ public class DefaultEntitiesVersionControlService implements EntitiesVersionCont
     }
 
     private VersionLoadResult onError(EntityId externalId, Throwable e) {
-        return analyze(e, externalId).orElse(VersionLoadResult.error(EntityLoadError.runtimeError(e, externalId)));
+        return analyze(e, externalId).orElse(VersionLoadResult.error(EntityLoadError.runtimeError(e)));
     }
 
     private Optional<VersionLoadResult> analyze(Throwable e, EntityId externalId) {

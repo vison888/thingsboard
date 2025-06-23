@@ -38,7 +38,7 @@
     },
     {
       "tag": "day-rate",
-      "stateRenderFunction": "ctx.api.font(element, ctx.properties.dayValueFont, ctx.properties.dayValueColor);\nctx.api.text(element, ctx.api.formatValue(ctx.values.dayRate, {units: ctx.properties.units, decimals: 0, ignoreUnitSymbol: true}));",
+      "stateRenderFunction": "ctx.api.font(element, ctx.properties.dayValueFont, ctx.properties.dayValueColor);\nctx.api.text(element, ctx.api.formatValue(ctx.values.dayRate, 0, null, 0));",
       "actions": null
     },
     {
@@ -48,12 +48,12 @@
     },
     {
       "tag": "night-rate",
-      "stateRenderFunction": "ctx.api.font(element, ctx.properties.nightValueFont, ctx.properties.nightValueColor);\nctx.api.text(element, ctx.api.formatValue(ctx.values.nightRate, {units: ctx.properties.units, decimals: 0, ignoreUnitSymbol: true}));",
+      "stateRenderFunction": "ctx.api.font(element, ctx.properties.nightValueFont, ctx.properties.nightValueColor);\nctx.api.text(element, ctx.api.formatValue(ctx.values.nightRate, 0, null, 0));",
       "actions": null
     },
     {
       "tag": "units",
-      "stateRenderFunction": "if (ctx.properties.showUnits) {\n    element.show();\n    ctx.api.font(element, ctx.properties.unitsFont, ctx.properties.unitsColor);\n    ctx.api.text(element, ctx.api.unitSymbol(ctx.properties.units));\n} else {\n    element.hide();\n}",
+      "stateRenderFunction": "if (ctx.properties.showUnits) {\n    element.show();\n    ctx.api.font(element, ctx.properties.unitsFont, ctx.properties.unitsColor);\n    ctx.api.text(element, ctx.properties.units);\n} else {\n    element.hide();\n}",
       "actions": null
     },
     {
@@ -427,9 +427,8 @@
       "group": "{i18n:scada.symbol.day-rate}",
       "type": "text",
       "default": "T1",
-      "disableOnProperty": "showDayLabel",
       "fieldClass": "medium-width",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -444,8 +443,7 @@
         "weight": "normal",
         "style": "normal"
       },
-      "disableOnProperty": "showDayLabel",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -454,8 +452,7 @@
       "group": "{i18n:scada.symbol.day-rate}",
       "type": "color",
       "default": "#000000",
-      "disableOnProperty": "showDayLabel",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -506,9 +503,8 @@
       "group": "{i18n:scada.symbol.night-rate}",
       "type": "text",
       "default": "T2",
-      "disableOnProperty": "showNightLabel",
       "fieldClass": "medium-width",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -523,8 +519,7 @@
         "weight": "normal",
         "style": "normal"
       },
-      "disableOnProperty": "showNightLabel",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -533,8 +528,7 @@
       "group": "{i18n:scada.symbol.night-rate}",
       "type": "color",
       "default": "#000",
-      "disableOnProperty": "showNightLabel",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -583,7 +577,6 @@
       "name": "{i18n:scada.symbol.units}",
       "type": "units",
       "default": "kWh",
-      "supportsUnitConversion": true,
       "disabled": false,
       "visible": true
     },
@@ -598,8 +591,7 @@
         "weight": "normal",
         "style": "normal"
       },
-      "disableOnProperty": "showUnits",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     },
     {
@@ -607,8 +599,7 @@
       "name": "{i18n:scada.symbol.units}",
       "type": "color",
       "default": "#000",
-      "disableOnProperty": "showUnits",
-      "disabled": true,
+      "disabled": false,
       "visible": true
     }
   ]

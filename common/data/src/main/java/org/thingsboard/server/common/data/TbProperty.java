@@ -15,16 +15,14 @@
  */
 package org.thingsboard.server.common.data;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
+/**
+ * Created by ashvayka on 25.09.18.
+ */
 @Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class TbProperty {
 
     private String key;
     private String value;
-
 }

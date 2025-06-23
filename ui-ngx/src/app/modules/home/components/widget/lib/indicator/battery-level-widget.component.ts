@@ -28,17 +28,18 @@ import {
   ViewEncapsulation
 } from '@angular/core';
 import { WidgetContext } from '@home/models/widget-component.models';
-import { isDefinedAndNotNull, isNumeric } from '@core/utils';
+import { formatValue, isDefinedAndNotNull, isNumeric } from '@core/utils';
+import { DatePipe } from '@angular/common';
 import {
   backgroundStyle,
   ColorProcessor,
   ComponentStyle,
-  createValueFormatterFromSettings,
+  getDataKey,
   getSingleTsValue,
   overlayStyle,
-  textStyle,
-  ValueFormatProcessor
+  textStyle
 } from '@shared/models/widget-settings.models';
+import { WidgetComponent } from '@home/components/widget/widget.component';
 import {
   batteryLevelDefaultSettings,
   BatteryLevelLayout,
@@ -136,10 +137,13 @@ export class BatteryLevelWidgetComponent implements OnInit, OnDestroy, AfterView
 
   hasCardClickAction = false;
 
-  private valueFormat: ValueFormatProcessor;
+  private decimals = 0;
+  private units = '';
 
-  constructor(private imagePipe: ImagePipe,
+  constructor(private date: DatePipe,
+              private imagePipe: ImagePipe,
               private sanitizer: DomSanitizer,
+              private widgetComponent: WidgetComponent,
               private renderer: Renderer2,
               private cd: ChangeDetectorRef) {
   }
@@ -148,7 +152,15 @@ export class BatteryLevelWidgetComponent implements OnInit, OnDestroy, AfterView
     this.ctx.$scope.batteryLevelWidget = this;
     this.settings = {...batteryLevelDefaultSettings, ...this.ctx.settings};
 
-    this.valueFormat = createValueFormatterFromSettings(this.ctx);
+    this.decimals = this.ctx.decimals;
+    this.units = this.ctx.units;
+    const dataKey = getDataKey(this.ctx.datasources);
+    if (isDefinedAndNotNull(dataKey?.decimals)) {
+      this.decimals = dataKey.decimals;
+    }
+    if (dataKey?.units) {
+      this.units = dataKey.units;
+    }
 
     this.layout = this.settings.layout;
 
@@ -244,7 +256,7 @@ export class BatteryLevelWidgetComponent implements OnInit, OnDestroy, AfterView
     if (tsValue && isDefinedAndNotNull(tsValue[1]) && isNumeric(tsValue[1])) {
       this.value = tsValue[1];
       this.batteryFillValue = this.parseBatteryFillValue(this.value);
-      this.valueText = this.valueFormat.format(this.value);
+      this.valueText = formatValue(this.value, this.decimals, this.units, false);
     } else {
       this.valueText = 'N/A';
     }

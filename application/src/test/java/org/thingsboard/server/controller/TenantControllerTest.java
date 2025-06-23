@@ -762,8 +762,7 @@ public class TenantControllerTest extends AbstractControllerTest {
         TransportProtos.ToRuleEngineMsg msg = TransportProtos.ToRuleEngineMsg.newBuilder()
                 .setTenantIdMSB(tenantId.getId().getMostSignificantBits())
                 .setTenantIdLSB(tenantId.getId().getLeastSignificantBits())
-                .setTbMsgProto(TbMsg.toProto(tbMsg))
-                .build();
+                .setTbMsg(TbMsg.toByteString(tbMsg)).build();
         tbClusterService.pushMsgToRuleEngine(tpi, tbMsg.getId(), msg, null);
         return tbMsg;
     }

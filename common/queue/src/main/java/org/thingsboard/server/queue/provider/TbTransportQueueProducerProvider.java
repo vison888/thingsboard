@@ -121,5 +121,4 @@ public class TbTransportQueueProducerProvider implements TbQueueProducerProvider
     public TbQueueProducer<TbProtoQueueMsg<TransportProtos.ToCalculatedFieldNotificationMsg>> getCalculatedFieldsNotificationsMsgProducer() {
         throw new RuntimeException("Not Implemented! Should not be used by Transport!");
     }
-
 }

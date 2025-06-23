@@ -381,7 +381,7 @@ public class RuleChainActorMessageProcessor extends ComponentMsgProcessor<RuleCh
         ToRuleEngineMsg toQueueMsg = ToRuleEngineMsg.newBuilder()
                 .setTenantIdMSB(tenantId.getId().getMostSignificantBits())
                 .setTenantIdLSB(tenantId.getId().getLeastSignificantBits())
-                .setTbMsgProto(TbMsg.toProto(newMsg))
+                .setTbMsg(TbMsg.toByteString(newMsg))
                 .build();
         clusterService.pushMsgToRuleEngine(tpi, newMsg.getId(), toQueueMsg, callbackWrapper);
     }

@@ -49,15 +49,14 @@ import {
   backgroundStyle,
   ColorProcessor,
   ComponentStyle,
-  createValueFormatterFromSettings,
   DateFormatProcessor,
+  getDataKey,
   getSingleTsValue,
   overlayStyle,
-  textStyle,
-  ValueFormatProcessor
+  textStyle
 } from '@shared/models/widget-settings.models';
 import { WidgetComponent } from '@home/components/widget/widget.component';
-import { isNumeric, isUndefinedOrNull } from '@core/utils';
+import { formatValue, isDefinedAndNotNull, isNumeric, isUndefinedOrNull } from '@core/utils';
 import { Element, G, Svg, SVG } from '@svgdotjs/svg.js';
 import {
   signalBarActive,
@@ -131,7 +130,8 @@ export class SignalStrengthWidgetComponent implements OnInit, OnDestroy, AfterVi
 
   hasCardClickAction = false;
 
-  private valueFormat: ValueFormatProcessor;
+  private decimals = 0;
+  private units = '';
 
   private drawSvgShapePending = false;
   private svgShape: Svg;
@@ -188,7 +188,15 @@ export class SignalStrengthWidgetComponent implements OnInit, OnDestroy, AfterVi
     this.showTooltipDate = this.showTooltip && this.settings.showTooltipDate;
 
     if (this.showTooltipValue) {
-      this.valueFormat = createValueFormatterFromSettings(this.ctx);
+      this.decimals = this.ctx.decimals;
+      this.units = this.ctx.units;
+      const dataKey = getDataKey(this.ctx.datasources);
+      if (isDefinedAndNotNull(dataKey?.decimals)) {
+        this.decimals = dataKey.decimals;
+      }
+      if (dataKey?.units) {
+        this.units = dataKey.units;
+      }
       this.tooltipValueStyle = textStyle(this.settings.tooltipValueFont);
       this.tooltipValueStyle.color = this.settings.tooltipValueColor;
       this.tooltipValueLabelStyle = {...this.tooltipValueStyle, ...this.tooltipValueLabelStyle};
@@ -249,7 +257,7 @@ export class SignalStrengthWidgetComponent implements OnInit, OnDestroy, AfterVi
     if (!this.noData) {
       this.rssi = Number(value);
       if (this.showTooltipValue) {
-        this.tooltipValueText = this.valueFormat.format(value);
+        this.tooltipValueText = formatValue(value, this.decimals, this.units, false);
       }
     } else {
       this.rssi = this.noSignalRssiValue;

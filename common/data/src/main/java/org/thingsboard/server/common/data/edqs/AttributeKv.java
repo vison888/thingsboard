@@ -25,8 +25,6 @@ import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
 import org.thingsboard.server.common.data.kv.KvEntry;
 
-import java.util.UUID;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -60,7 +58,7 @@ public class AttributeKv implements EdqsObject {
     }
 
     @Override
-    public String stringKey() {
+    public String key() {
         return "a_" + entityId + "_" + scope + "_" + key;
     }
 
@@ -73,7 +71,5 @@ public class AttributeKv implements EdqsObject {
     public ObjectType type() {
         return ObjectType.ATTRIBUTE_KV;
     }
-
-    public record Key(UUID entityId, AttributeScope scope, int key) implements EdqsObjectKey {}
 
 }

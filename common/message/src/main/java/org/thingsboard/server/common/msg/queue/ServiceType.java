@@ -27,8 +27,7 @@ public enum ServiceType {
     TB_TRANSPORT("TB Transport"),
     JS_EXECUTOR("JS Executor"),
     TB_VC_EXECUTOR("TB VC Executor"),
-    EDQS("TB Entity Data Query Service"),
-    TASK_PROCESSOR("Task Processor");
+    EDQS("TB Entity Data Query Service");
 
     private final String label;
 

@@ -29,6 +29,7 @@ import org.thingsboard.server.dao.dictionary.KeyDictionaryDao;
 import org.thingsboard.server.dao.model.sqlts.dictionary.KeyDictionaryCompositeKey;
 import org.thingsboard.server.dao.model.sqlts.dictionary.KeyDictionaryEntry;
 import org.thingsboard.server.dao.sql.JpaAbstractDaoListeningExecutorService;
+import org.thingsboard.server.dao.util.SqlDao;
 
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +38,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 @Component
 @Slf4j
+@SqlDao
 @RequiredArgsConstructor
 public class JpaKeyDictionaryDao extends JpaAbstractDaoListeningExecutorService implements KeyDictionaryDao {
 

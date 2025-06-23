@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, DestroyRef, Inject, SkipSelf } from '@angular/core';
+import { Component, DestroyRef, Inject, OnInit, SkipSelf } from '@angular/core';
 import { ErrorStateMatcher } from '@angular/material/core';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { Store } from '@ngrx/store';
@@ -60,7 +60,7 @@ export interface EntityAliasesDialogData {
   styleUrls: ['./entity-aliases-dialog.component.scss']
 })
 export class EntityAliasesDialogComponent extends DialogComponent<EntityAliasesDialogComponent, EntityAliases>
-  implements ErrorStateMatcher {
+  implements OnInit, ErrorStateMatcher {
 
   title: string;
   disableAdd: boolean;
@@ -107,7 +107,8 @@ export class EntityAliasesDialogComponent extends DialogComponent<EntityAliasesD
               this.addWidgetTitleToWidgetsMap(widget.config.alarmSource.entityAliasId, widget.config.title);
             }
           } else {
-            this.dashboardUtils.getWidgetDatasources(widget).forEach((datasource) => {
+            const datasources = this.dashboardUtils.validateAndUpdateDatasources(widget.config.datasources);
+            datasources.forEach((datasource) => {
               if ([DatasourceType.entity, DatasourceType.entityCount, DatasourceType.alarmCount].includes(datasource.type)
                 && datasource.entityAliasId) {
                 this.addWidgetTitleToWidgetsMap(datasource.entityAliasId, widget.config.title);
@@ -142,9 +143,7 @@ export class EntityAliasesDialogComponent extends DialogComponent<EntityAliasesD
       widgetsTitleList = [];
       this.aliasToWidgetsMap[aliasId] = widgetsTitleList;
     }
-    if (!widgetsTitleList.includes(widgetTitle)) {
-      widgetsTitleList.push(widgetTitle);
-    }
+    widgetsTitleList.push(widgetTitle);
   }
 
   private createEntityAliasFormControl(aliasId: string, entityAlias: EntityAlias): AbstractControl {
@@ -165,6 +164,9 @@ export class EntityAliasesDialogComponent extends DialogComponent<EntityAliasesD
 
   entityAliasesFormArray(): UntypedFormArray {
     return this.entityAliasesFormGroup.get('entityAliases') as UntypedFormArray;
+  }
+
+  ngOnInit(): void {
   }
 
   isErrorState(control: UntypedFormControl | null, form: FormGroupDirective | NgForm | null): boolean {

@@ -52,7 +52,7 @@ public class CustomerImportService extends BaseEntityImportService<CustomerId, C
     }
 
     @Override
-    protected Customer saveOrUpdate(EntitiesImportCtx ctx, Customer customer, EntityExportData<Customer> exportData, IdProvider idProvider, CompareResult compareResult) {
+    protected Customer saveOrUpdate(EntitiesImportCtx ctx, Customer customer, EntityExportData<Customer> exportData, IdProvider idProvider) {
         if (!customer.isPublic()) {
             return customerService.saveCustomer(customer);
         } else {

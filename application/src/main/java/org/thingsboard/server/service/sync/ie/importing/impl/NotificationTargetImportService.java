@@ -80,7 +80,7 @@ public class NotificationTargetImportService extends BaseEntityImportService<Not
     }
 
     @Override
-    protected NotificationTarget saveOrUpdate(EntitiesImportCtx ctx, NotificationTarget notificationTarget, EntityExportData<NotificationTarget> exportData, IdProvider idProvider, CompareResult compareResult) {
+    protected NotificationTarget saveOrUpdate(EntitiesImportCtx ctx, NotificationTarget notificationTarget, EntityExportData<NotificationTarget> exportData, IdProvider idProvider) {
         ConstraintValidator.validateFields(notificationTarget);
         return notificationTargetService.saveNotificationTarget(ctx.getTenantId(), notificationTarget);
     }

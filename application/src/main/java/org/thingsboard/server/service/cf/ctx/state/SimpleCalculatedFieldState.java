@@ -15,8 +15,6 @@
  */
 package org.thingsboard.server.service.cf.ctx.state;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Data;
@@ -58,13 +56,7 @@ public class SimpleCalculatedFieldState extends BaseCalculatedFieldState {
         for (Map.Entry<String, ArgumentEntry> entry : this.arguments.entrySet()) {
             try {
                 BasicKvEntry kvEntry = ((SingleValueArgumentEntry) entry.getValue()).getKvEntryValue();
-                double value = switch (kvEntry.getDataType()) {
-                    case LONG -> kvEntry.getLongValue().map(Long::doubleValue).orElseThrow();
-                    case DOUBLE -> kvEntry.getDoubleValue().orElseThrow();
-                    case BOOLEAN -> kvEntry.getBooleanValue().map(b -> b ? 1.0 : 0.0).orElseThrow();
-                    case STRING, JSON -> Double.parseDouble(kvEntry.getValueAsString());
-                };
-                expr.setVariable(entry.getKey(), value);
+                expr.setVariable(entry.getKey(), Double.parseDouble(kvEntry.getValueAsString()));
             } catch (NumberFormatException e) {
                 throw new IllegalArgumentException("Argument '" + entry.getKey() + "' is not a number.");
             }
@@ -73,41 +65,19 @@ public class SimpleCalculatedFieldState extends BaseCalculatedFieldState {
         double expressionResult = expr.evaluate();
 
         Output output = ctx.getOutput();
-        Object result = formatResult(expressionResult, output.getDecimalsByDefault());
-        JsonNode outputResult = createResultJson(ctx.isUseLatestTs(), output.getName(), result);
-
-        return Futures.immediateFuture(new CalculatedFieldResult(output.getType(), output.getScope(), outputResult));
-    }
-
-    private Object formatResult(double expressionResult, Integer decimals) {
-        if (decimals == null) {
-            return expressionResult;
-        }
-        if (decimals.equals(0)) {
-            return TbUtils.toInt(expressionResult);
-        }
-        return TbUtils.toFixed(expressionResult, decimals);
-    }
-
-    private JsonNode createResultJson(boolean useLatestTs, String outputName, Object result) {
-        ObjectNode valuesNode = JacksonUtil.newObjectNode();
-        if (result instanceof Double doubleValue) {
-            valuesNode.put(outputName, doubleValue);
-        } else if (result instanceof Integer integerValue) {
-            valuesNode.put(outputName, integerValue);
+        Object result;
+        Integer decimals = output.getDecimalsByDefault();
+        if (decimals != null) {
+            if (decimals.equals(0)) {
+                result = TbUtils.toInt(expressionResult);
+            } else {
+                result = TbUtils.toFixed(expressionResult, decimals);
+            }
         } else {
-            valuesNode.set(outputName, JacksonUtil.valueToTree(result));
+            result = expressionResult;
         }
 
-        long latestTs = getLatestTimestamp();
-        if (useLatestTs && latestTs != -1) {
-            ObjectNode resultNode = JacksonUtil.newObjectNode();
-            resultNode.put("ts", latestTs);
-            resultNode.set("values", valuesNode);
-            return resultNode;
-        } else {
-            return valuesNode;
-        }
+        return Futures.immediateFuture(new CalculatedFieldResult(output.getType(), output.getScope(), JacksonUtil.valueToTree(Map.of(output.getName(), result))));
     }
 
 }

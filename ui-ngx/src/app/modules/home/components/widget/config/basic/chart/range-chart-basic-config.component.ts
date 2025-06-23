@@ -56,7 +56,6 @@ import {
   chartShapes,
   chartShapeTranslations
 } from '@home/components/widget/lib/chart/chart.models';
-import { getSourceTbUnitSymbol } from '@shared/models/unit.models';
 
 @Component({
   selector: 'tb-range-chart-basic-config',
@@ -435,13 +434,13 @@ export class RangeChartBasicConfigComponent extends BasicWidgetConfigComponent {
   }
 
   private _pointLabelPreviewFn(): string {
-    const units: string = getSourceTbUnitSymbol(this.rangeChartWidgetConfigForm.get('units').value);
+    const units: string = this.rangeChartWidgetConfigForm.get('units').value;
     const decimals: number = this.rangeChartWidgetConfigForm.get('decimals').value;
     return formatValue(22, decimals, units, false);
   }
 
   private _tooltipValuePreviewFn(): string {
-    const units: string = getSourceTbUnitSymbol(this.rangeChartWidgetConfigForm.get('units').value);
+    const units: string = this.rangeChartWidgetConfigForm.get('units').value;
     const decimals: number = this.rangeChartWidgetConfigForm.get('decimals').value;
     return formatValue(22, decimals, units, false);
   }

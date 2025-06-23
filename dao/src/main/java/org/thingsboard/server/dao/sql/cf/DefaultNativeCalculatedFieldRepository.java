@@ -79,6 +79,7 @@ public class DefaultNativeCalculatedFieldRepository implements NativeCalculatedF
                 JsonNode configuration = JacksonUtil.toJsonNode((String) row.get("configuration"));
                 long version = row.get("version") != null ? (long) row.get("version") : 0;
                 String debugSettings = (String) row.get("debug_settings");
+                Object externalIdObj = row.get("external_id");
 
                 CalculatedField calculatedField = new CalculatedField();
                 calculatedField.setId(new CalculatedFieldId(id));
@@ -88,12 +89,7 @@ public class DefaultNativeCalculatedFieldRepository implements NativeCalculatedF
                 calculatedField.setType(type);
                 calculatedField.setName(name);
                 calculatedField.setConfigurationVersion(configurationVersion);
-                try {
-                    calculatedField.setConfiguration(JacksonUtil.treeToValue(configuration, CalculatedFieldConfiguration.class));
-                } catch (Exception e) {
-                    log.error("Invalid configuration for CalculatedField [{}]. Skipping.", id, e);
-                    return null;
-                }
+                calculatedField.setConfiguration(JacksonUtil.treeToValue(configuration, CalculatedFieldConfiguration.class));
                 calculatedField.setVersion(version);
                 calculatedField.setDebugSettings(JacksonUtil.fromString(debugSettings, DebugSettings.class));
 
@@ -122,6 +118,7 @@ public class DefaultNativeCalculatedFieldRepository implements NativeCalculatedF
                 EntityType entityType = EntityType.valueOf((String) row.get("entity_type"));
                 UUID entityId = (UUID) row.get("entity_id");
                 UUID calculatedFieldId = (UUID) row.get("calculated_field_id");
+                JsonNode configuration = JacksonUtil.toJsonNode((String) row.get("configuration"));
 
                 CalculatedFieldLink calculatedFieldLink = new CalculatedFieldLink();
                 calculatedFieldLink.setId(new CalculatedFieldLinkId(id));

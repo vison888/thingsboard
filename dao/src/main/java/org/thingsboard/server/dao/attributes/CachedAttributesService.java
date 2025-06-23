@@ -37,7 +37,6 @@ import org.thingsboard.server.common.data.id.DeviceProfileId;
 import org.thingsboard.server.common.data.id.EntityId;
 import org.thingsboard.server.common.data.id.TenantId;
 import org.thingsboard.server.common.data.kv.AttributeKvEntry;
-import org.thingsboard.server.common.data.kv.AttributesSaveResult;
 import org.thingsboard.server.common.data.kv.BaseAttributeKvEntry;
 import org.thingsboard.server.common.data.util.TbPair;
 import org.thingsboard.server.common.msg.edqs.EdqsService;
@@ -57,6 +56,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.thingsboard.server.dao.attributes.AttributeUtils.validate;
 
@@ -150,7 +150,7 @@ public class CachedAttributesService implements AttributesService {
                     List<AttributeKvEntry> cachedAttributes = wrappedCachedAttributes.values().stream()
                             .map(TbCacheValueWrapper::get)
                             .filter(Objects::nonNull)
-                            .toList();
+                            .collect(Collectors.toList());
                     if (wrappedCachedAttributes.size() == attributeKeys.size()) {
                         log.trace("[{}][{}] Found all attributes from cache: {}", entityId, scope, attributeKeys);
                         return Futures.immediateFuture(cachedAttributes);
@@ -158,6 +158,8 @@ public class CachedAttributesService implements AttributesService {
 
                     Set<String> notFoundAttributeKeys = new HashSet<>(attributeKeys);
                     notFoundAttributeKeys.removeAll(wrappedCachedAttributes.keySet());
+
+                    List<AttributeCacheKey> notFoundKeys = notFoundAttributeKeys.stream().map(k -> new AttributeCacheKey(scope, entityId, k)).collect(Collectors.toList());
 
                     // DB call should run in DB executor, not in cache-related executor
                     return jpaExecutorService.submit(() -> {
@@ -220,31 +222,33 @@ public class CachedAttributesService implements AttributesService {
     }
 
     @Override
-    public ListenableFuture<AttributesSaveResult> save(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
+    public ListenableFuture<Long> save(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
         validate(entityId, scope);
         AttributeUtils.validate(attribute, valueNoXssValidation);
-        return doSave(tenantId, entityId, scope, List.of(attribute));
+        return doSave(tenantId, entityId, scope, attribute);
     }
 
     @Override
-    public ListenableFuture<AttributesSaveResult> save(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
+    public ListenableFuture<List<Long>> save(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
         validate(entityId, scope);
         AttributeUtils.validate(attributes, valueNoXssValidation);
-        return doSave(tenantId, entityId, scope, attributes);
-    }
 
-    private ListenableFuture<AttributesSaveResult> doSave(TenantId tenantId, EntityId entityId, AttributeScope scope, List<AttributeKvEntry> attributes) {
         List<ListenableFuture<Long>> futures = new ArrayList<>(attributes.size());
         for (var attribute : attributes) {
-            ListenableFuture<Long> future = Futures.transform(attributesDao.save(tenantId, entityId, scope, attribute), version -> {
-                BaseAttributeKvEntry attributeKvEntry = new BaseAttributeKvEntry(((BaseAttributeKvEntry) attribute).getKv(), attribute.getLastUpdateTs(), version);
-                put(entityId, scope, attributeKvEntry);
-                edqsService.onUpdate(tenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, attributeKvEntry, version));
-                return version;
-            }, cacheExecutor);
-            futures.add(future);
+            futures.add(doSave(tenantId, entityId, scope, attribute));
         }
-        return Futures.transform(Futures.allAsList(futures), AttributesSaveResult::of, MoreExecutors.directExecutor());
+
+        return Futures.allAsList(futures);
+    }
+
+    private ListenableFuture<Long> doSave(TenantId tenantId, EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
+        ListenableFuture<Long> future = attributesDao.save(tenantId, entityId, scope, attribute);
+        return Futures.transform(future, version -> {
+            BaseAttributeKvEntry attributeKvEntry = new BaseAttributeKvEntry(((BaseAttributeKvEntry) attribute).getKv(), attribute.getLastUpdateTs(), version);
+            put(entityId, scope, attributeKvEntry);
+            edqsService.onUpdate(tenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, attributeKvEntry, version));
+            return version;
+        }, cacheExecutor);
     }
 
     private void put(EntityId entityId, AttributeScope scope, AttributeKvEntry attribute) {
@@ -266,7 +270,7 @@ public class CachedAttributesService implements AttributesService {
                 edqsService.onDelete(tenantId, ObjectType.ATTRIBUTE_KV, new AttributeKv(entityId, scope, key, version));
             }
             return key;
-        }, cacheExecutor)).toList());
+        }, cacheExecutor)).collect(Collectors.toList()));
     }
 
     @Override

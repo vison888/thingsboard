@@ -19,17 +19,17 @@ import {
   BackgroundType,
   ColorProcessor,
   ColorSettings,
+  ColorType,
   ComponentStyle,
   constantColor,
   DateFormatSettings,
   Font,
   lastUpdateAgoDateFormat,
-  textStyle,
-  ValueFormatProcessor
+  textStyle
 } from '@shared/models/widget-settings.models';
-import { DataEntry, DataKey, DatasourceData } from '@shared/models/widget.models';
-import { Injector } from '@angular/core';
-import { UnitService } from '@core/services/unit.service';
+import { ComparisonResultType, DataEntry, DataKey, DatasourceData } from '@shared/models/widget.models';
+import { DataKeyType } from '@shared/models/telemetry/telemetry.models';
+import { AggregationType } from '@shared/models/time/time.models';
 
 export interface AggregatedValueCardWidgetSettings {
   autoScale: boolean;
@@ -81,12 +81,10 @@ export interface AggregatedValueCardValue {
   showArrow: boolean;
   upArrow: boolean;
   downArrow: boolean;
-  valueFormat: ValueFormatProcessor;
 }
 
 export const computeAggregatedCardValue =
-  (dataKeys: DataKey[], keyName: string, position: AggregatedValueCardKeyPosition,
-   $injector: Injector, widgetDecimal: number): AggregatedValueCardValue => {
+  (dataKeys: DataKey[], keyName: string, position: AggregatedValueCardKeyPosition): AggregatedValueCardValue => {
   const key = dataKeys.find(dataKey => ( dataKey.name === keyName && (dataKey.settings?.position === position ||
                                          (!dataKey.settings?.position && position === AggregatedValueCardKeyPosition.center)) ));
   if (key) {
@@ -94,18 +92,13 @@ export const computeAggregatedCardValue =
     return {
       key,
       value: '',
-      units: $injector.get(UnitService).getTargetUnitSymbol(key.units),
+      units: key.units,
       style: textStyle(settings.font),
       color: ColorProcessor.fromSettings(settings.color),
       center: position === AggregatedValueCardKeyPosition.center,
       showArrow: settings.showArrow,
       upArrow: false,
-      downArrow: false,
-      valueFormat: ValueFormatProcessor.fromSettings($injector, {
-        units: key.units,
-        decimals: key.decimals || widgetDecimal,
-        ignoreUnitSymbol: true,
-      })
+      downArrow: false
     };
   }
 };

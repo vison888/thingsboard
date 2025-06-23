@@ -36,11 +36,8 @@ import org.thingsboard.server.common.data.query.EntityListFilter;
 import javax.net.ssl.SSLParameters;
 import java.net.URI;
 import java.nio.channels.NotYetConnectedException;
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -51,13 +48,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class WsClient extends WebSocketClient implements AutoCloseable {
 
-    public final List<JsonNode> lastMsgs = new ArrayList<>();
+    public volatile JsonNode lastMsg;
     private CountDownLatch reply;
     private CountDownLatch update;
 
     private final Lock updateLock = new ReentrantLock();
 
-    private final long requestTimeoutMs;
+    private long requestTimeoutMs;
 
     public WsClient(URI serverUri, long requestTimeoutMs) {
         super(serverUri);
@@ -66,6 +63,7 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
 
     @Override
     public void onOpen(ServerHandshake serverHandshake) {
+
     }
 
     @Override
@@ -75,9 +73,8 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         }
         updateLock.lock();
         try {
-            JsonNode msg = JacksonUtil.toJsonNode(s);
-            lastMsgs.add(msg);
-            log.trace("Received new msg: {}", msg.toPrettyString());
+            lastMsg = JacksonUtil.toJsonNode(s);
+            log.trace("Received new msg: {}", lastMsg.toPrettyString());
             if (update != null) {
                 update.countDown();
             }
@@ -99,11 +96,11 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         log.error("WebSocket client error:", e);
     }
 
-    public void registerWaitForUpdates(int count) {
+    public void registerWaitForUpdate() {
         updateLock.lock();
         try {
-            lastMsgs.clear();
-            update = new CountDownLatch(count);
+            lastMsg = null;
+            update = new CountDownLatch(1);
         } finally {
             updateLock.unlock();
         }
@@ -114,7 +111,6 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
     public void send(String text) throws NotYetConnectedException {
         updateLock.lock();
         try {
-            lastMsgs.clear();
             reply = new CountDownLatch(1);
         } finally {
             updateLock.unlock();
@@ -122,19 +118,19 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         super.send(text);
     }
 
-    public WsClient subscribeForTelemetry(List<UUID> devices, List<String> keys) {
+    public WsClient subscribeForTelemetry(List<UUID> devices, String key) {
         EntityDataCmd cmd = new EntityDataCmd();
         cmd.setCmdId(RandomUtils.nextInt(0, 1000));
 
         EntityListFilter devicesFilter = new EntityListFilter();
         devicesFilter.setEntityType(EntityType.DEVICE);
         devicesFilter.setEntityList(devices.stream().map(UUID::toString).collect(Collectors.toList()));
-        EntityDataPageLink pageLink = new EntityDataPageLink(100, 0, null, null);
+        EntityDataPageLink pageLink = new EntityDataPageLink(100,0, null, null);
         EntityDataQuery devicesQuery = new EntityDataQuery(devicesFilter, pageLink, Collections.emptyList(), Collections.emptyList(), Collections.emptyList());
         cmd.setQuery(devicesQuery);
 
         LatestValueCmd latestCmd = new LatestValueCmd();
-        latestCmd.setKeys(keys.stream().map(key -> new EntityKey(EntityKeyType.TIME_SERIES, key)).toList());
+        latestCmd.setKeys(List.of(new EntityKey(EntityKeyType.TIME_SERIES, key)));
         cmd.setLatestCmd(latestCmd);
 
         CmdsWrapper wrapper = new CmdsWrapper();
@@ -143,12 +139,12 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         return this;
     }
 
-    public List<JsonNode> waitForUpdates(long ms) {
+    public JsonNode waitForUpdate(long ms) {
         log.trace("update latch count: {}", update.getCount());
         try {
             if (update.await(ms, TimeUnit.MILLISECONDS)) {
                 log.trace("Waited for update");
-                return getLastMsgs();
+                return getLastMsg();
             }
         } catch (InterruptedException e) {
             log.debug("Failed to await reply", e);
@@ -161,8 +157,7 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         try {
             if (reply.await(requestTimeoutMs, TimeUnit.MILLISECONDS)) {
                 log.trace("Waited for reply");
-                List<JsonNode> lastMsgs = getLastMsgs();
-                return lastMsgs.isEmpty() ? null : lastMsgs.get(0);
+                return getLastMsg();
             }
         } catch (InterruptedException e) {
             log.debug("Failed to await reply", e);
@@ -171,30 +166,24 @@ public class WsClient extends WebSocketClient implements AutoCloseable {
         throw new IllegalStateException("No WS reply arrived within " + requestTimeoutMs + " ms");
     }
 
-    private List<JsonNode> getLastMsgs() {
-        if (lastMsgs.isEmpty()) {
-            return lastMsgs;
+    private JsonNode getLastMsg() {
+        if (lastMsg != null) {
+            JsonNode errorMsg = lastMsg.get("errorMsg");
+            if (errorMsg != null && !errorMsg.isNull() && StringUtils.isNotEmpty(errorMsg.asText())) {
+                throw new RuntimeException("WS error from server: " + errorMsg.asText());
+            } else {
+                return lastMsg;
+            }
+        } else {
+            return null;
         }
-        List<JsonNode> errors = lastMsgs.stream()
-                .map(msg -> msg.get("errorMsg"))
-                .filter(errorMsg -> errorMsg != null && !errorMsg.isNull() && StringUtils.isNotEmpty(errorMsg.asText()))
-                .toList();
-        if (!errors.isEmpty()) {
-            throw new RuntimeException("WS error from server: " + errors.stream()
-                    .map(JsonNode::asText)
-                    .collect(Collectors.joining(", ")));
-        }
-        return lastMsgs;
     }
 
-    public Map<String, String> getLatest(UUID deviceId) {
-        Map<String, String> updates = new HashMap<>();
-        getLastMsgs().forEach(msg -> {
-            EntityDataUpdate update = JacksonUtil.treeToValue(msg, EntityDataUpdate.class);
-            Map<String, String> latest = update.getLatest(deviceId);
-            updates.putAll(latest);
-        });
-        return updates;
+    public Object getTelemetryUpdate(UUID deviceId, String key) {
+        JsonNode lastMsg = getLastMsg();
+        if (lastMsg == null || lastMsg.isNull()) return null;
+        EntityDataUpdate update = JacksonUtil.treeToValue(lastMsg, EntityDataUpdate.class);
+        return update.getLatest(deviceId, key);
     }
 
     @Override
